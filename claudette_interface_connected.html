@@ -1,0 +1,1283 @@
+<!-- Version: 2026-04-22-TC7-007 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claudette</title>
+<link rel="icon" type="image/png" href="/favicon">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Inter:wght@300;400&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#2a2a2a;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;padding:20px}
+.screen{width:min(390px,100%);height:min(844px,100vh);max-width:680px;background:#2a2a2a;border-radius:clamp(0px,48px,48px);border:1px solid rgba(245,215,110,.12);box-shadow:0 0 0 1px rgba(0,0,0,.4),inset 0 1px 0 rgba(245,215,110,.06);display:flex;flex-direction:column;align-items:center;padding:52px 0 0;position:relative;overflow:hidden}
+@media(min-width:500px){.screen{border-radius:32px}}
+@media(min-width:768px){.screen{width:580px;height:820px}}
+@media(min-width:1024px){.screen{width:680px;height:860px}}
+.screen::before{content:'';position:absolute;top:-120px;left:50%;transform:translateX(-50%);width:300px;height:300px;background:radial-gradient(circle,rgba(245,215,110,.07) 0%,transparent 70%);pointer-events:none;z-index:0}
+
+/* Name */
+.name{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:16px;letter-spacing:.35em;text-transform:uppercase;color:rgba(245,215,110,.45);position:relative;z-index:1;flex-shrink:0}
+
+/* Butterfly stage */
+.stage-wrap{position:relative;width:220px;height:170px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:8px}
+.aura{position:absolute;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(245,215,110,.08) 0%,transparent 70%)}
+.flying-wrap{position:absolute;z-index:2;display:flex;align-items:center;justify-content:center;width:100%;height:100%;transition:opacity .8s ease}
+.resting-wrap{position:absolute;z-index:2;width:100%;height:100%;opacity:0;transition:opacity .8s ease}
+
+/* Status */
+.status-area{height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;margin-top:4px}
+.status-label{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:18px;color:rgba(245,215,110,.7);letter-spacing:.04em;transition:opacity .5s}
+.wave-container{height:24px;display:flex;align-items:center;gap:2px;justify-content:center;opacity:0;transition:opacity .4s;position:absolute}
+.wave-bar{width:2px;border-radius:2px;background:rgba(245,215,110,.55);animation:wave .8s ease-in-out infinite}
+.wave-bar:nth-child(1){height:6px;animation-delay:0s}.wave-bar:nth-child(2){height:12px;animation-delay:.1s}.wave-bar:nth-child(3){height:18px;animation-delay:.15s}.wave-bar:nth-child(4){height:22px;animation-delay:.05s}.wave-bar:nth-child(5){height:15px;animation-delay:.2s}.wave-bar:nth-child(6){height:19px;animation-delay:.12s}.wave-bar:nth-child(7){height:11px;animation-delay:.08s}
+@keyframes wave{0%,100%{transform:scaleY(.5);opacity:.5}50%{transform:scaleY(1);opacity:1}}
+
+/* Conversation thread */
+.thread{flex:1;width:100%;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:20px;min-height:0}
+.thread::-webkit-scrollbar{width:2px}
+.thread::-webkit-scrollbar-track{background:transparent}
+.thread::-webkit-scrollbar-thumb{background:rgba(245,215,110,.15);border-radius:2px}
+
+/* Messages */
+.msg{display:flex;flex-direction:column;gap:4px;max-width:88%}
+.msg.claudette{align-self:flex-start}
+.msg.jeanette{align-self:flex-end}
+.msg-speaker{font-size:9px;letter-spacing:.18em;text-transform:uppercase;font-weight:300}
+.msg.claudette .msg-speaker{color:rgba(245,215,110,.35);padding-left:2px}
+.msg.jeanette .msg-speaker{color:rgba(255,255,255,.2);text-align:right;padding-right:2px}
+.msg-text{font-family:'Cormorant Garamond',serif;line-height:1.65;padding:0;user-select:text;-webkit-user-select:text;cursor:text}
+.msg.claudette .msg-text{font-style:italic;font-weight:400;font-size:20px;color:rgba(245,215,110,.95)}
+.msg.jeanette .msg-text{font-style:normal;font-weight:400;font-size:18px;color:rgba(255,255,255,.65);text-align:right}
+
+/* Error message */
+.msg-error{font-family:'Inter',sans-serif;font-size:12px;color:rgba(200,80,80,.7);font-style:normal;padding:8px 12px;border:1px solid rgba(200,80,80,.2);border-radius:8px;align-self:center}
+
+/* Waiting to raise notice */
+.waiting-notice{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:rgba(245,215,110,.45);text-align:center;padding:8px 20px;border-top:1px solid rgba(245,215,110,.08)}
+
+/* Input area */
+.input-area{width:100%;padding:12px 20px 32px;display:flex;align-items:center;gap:10px;flex-shrink:0;border-top:1px solid rgba(245,215,110,.06)}
+.text-input{flex:1;background:transparent;border:none;border-bottom:1px solid rgba(245,215,110,.18);padding:8px 2px;font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:400;color:rgba(255,255,255,.65);outline:none;transition:border-color .2s;caret-color:rgba(245,215,110,.6);resize:none;overflow-y:auto;max-height:120px;line-height:1.55;scrollbar-width:none}
+.text-input::-webkit-scrollbar{display:none}
+.text-input::placeholder{color:rgba(255,255,255,.18);font-style:italic}
+.text-input:focus{border-bottom-color:rgba(245,215,110,.4)}
+.upload-btn{width:36px;height:36px;border-radius:50%;border:1px solid rgba(245,215,110,.15);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0;position:relative}
+.upload-btn:hover{border-color:rgba(245,215,110,.35);background:rgba(245,215,110,.05)}
+.upload-btn svg{width:14px;height:14px}
+.upload-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-btn:disabled{opacity:.3;cursor:default}
+.send-btn{width:36px;height:36px;border-radius:50%;border:1px solid rgba(245,215,110,.22);background:rgba(245,215,110,.05);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0}
+.send-btn:hover{border-color:rgba(245,215,110,.45);background:rgba(245,215,110,.1)}
+.send-btn:active{transform:scale(.95)}
+.send-btn svg{width:14px;height:14px}
+.send-btn:disabled{opacity:.3;cursor:default}
+.attachment-preview{display:flex;align-items:center;gap:6px;padding:4px 2px;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:rgba(245,215,110,.45);flex-shrink:0;max-width:120px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.attachment-preview.hidden{display:none}
+.msg-image{max-width:100%;border-radius:8px;margin-top:4px;opacity:.88}
+/* Voice toggle */
+.voice-btn{width:36px;height:36px;border-radius:50%;border:1px solid rgba(245,215,110,.12);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .3s;flex-shrink:0;opacity:.45}
+.voice-btn:hover{opacity:.75;border-color:rgba(245,215,110,.28)}
+.voice-btn.active{opacity:1;border-color:rgba(245,215,110,.5);background:rgba(245,215,110,.07)}
+.voice-btn svg{width:13px;height:13px}
+/* Library button */
+.library-btn{background:transparent;border:none;font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:13px;color:rgba(245,215,110,.3);cursor:pointer;padding:6px 0;letter-spacing:.03em;transition:color .3s;display:block;width:100%;text-align:left}
+.library-btn:hover{color:rgba(245,215,110,.55)}
+.library-btn.active{color:rgba(245,215,110,.65)}
+.library-btn:disabled{opacity:.4;cursor:default}
+/* Eye indicator — camera state */
+.eye-indicator{width:28px;height:28px;flex-shrink:0;opacity:.18;transition:opacity .6s,filter .6s;cursor:default}
+.eye-indicator.active{opacity:.9;filter:drop-shadow(0 0 4px rgba(245,215,110,.5));animation:eye-flash 2s ease forwards}
+@keyframes eye-flash{0%{opacity:.18}15%{opacity:1}85%{opacity:.9}100%{opacity:.18}}
+
+/* Butterfly animations */
+@keyframes drift-slow{0%{transform:translate(0,-8px) rotate(-1.5deg)}25%{transform:translate(3px,-12px) rotate(.5deg)}50%{transform:translate(-2px,-15px) rotate(-1deg)}75%{transform:translate(4px,-10px) rotate(1deg)}100%{transform:translate(0,-8px) rotate(-1.5deg)}}
+@keyframes drift-active{0%{transform:translate(0,0) rotate(-2deg)}20%{transform:translate(4px,-5px) rotate(1deg)}40%{transform:translate(-3px,-8px) rotate(-1.5deg)}60%{transform:translate(5px,-4px) rotate(2deg)}80%{transform:translate(-2px,-2px) rotate(-.5deg)}100%{transform:translate(0,0) rotate(-2deg)}}
+@keyframes fl-slow{0%,100%{transform:scaleX(1) skewY(0)}40%{transform:scaleX(.76) skewY(2deg)}70%{transform:scaleX(.9) skewY(.8deg)}}
+@keyframes fr-slow{0%,100%{transform:scaleX(1) skewY(0)}40%{transform:scaleX(.76) skewY(-2deg)}70%{transform:scaleX(.9) skewY(-.8deg)}}
+@keyframes fl-fast{0%,100%{transform:scaleX(1) skewY(0)}30%{transform:scaleX(.46) skewY(3.5deg)}60%{transform:scaleX(.82) skewY(1deg)}}
+@keyframes fr-fast{0%,100%{transform:scaleX(1) skewY(0)}30%{transform:scaleX(.46) skewY(-3.5deg)}60%{transform:scaleX(.82) skewY(-1deg)}}
+@keyframes ant-slow{0%,100%{transform:rotate(-1.5deg)}50%{transform:rotate(1deg)}}
+@keyframes ant-fast{0%,100%{transform:rotate(-1deg)}50%{transform:rotate(1.5deg)}}
+@keyframes aura-waking{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.1);opacity:.8}}
+@keyframes aura-thinking{0%,100%{transform:scale(1.05);opacity:.8}50%{transform:scale(1.22);opacity:.4}}
+@keyframes aura-waiting{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.07);opacity:.9}}
+@keyframes rest-sway{0%,100%{transform:rotate(0)}50%{transform:rotate(.8deg)}}
+@keyframes wing-fold-l{0%,100%{transform:scaleX(1) skewY(0)}50%{transform:scaleX(.68) skewY(1.2deg)}}
+@keyframes wing-fold-r{0%,100%{transform:scaleX(1) skewY(0)}50%{transform:scaleX(.68) skewY(-1.2deg)}}
+@keyframes rest-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.012)}}
+/* Note field — reverse flower */
+.note-area{width:100%;padding:0 20px 4px;flex-shrink:0}
+.note-field-wrap{position:relative;border:1px solid rgba(245,215,110,.14);border-radius:3px;background:rgba(245,215,110,.03);transition:border-color .3s}
+.note-field-wrap:focus-within{border-color:rgba(245,215,110,.30);background:rgba(245,215,110,.05)}
+.note-textarea{width:100%;background:transparent;border:none;outline:none;color:rgba(245,215,110,.75);font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:15px;line-height:1.6;padding:9px 68px 9px 12px;resize:none;min-height:40px;max-height:88px;overflow-y:auto;caret-color:rgba(245,215,110,.6);scrollbar-width:none}
+.note-textarea::-webkit-scrollbar{display:none}
+.note-textarea::placeholder{color:rgba(245,215,110,.22);font-style:italic}
+.note-send-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;border:1px solid rgba(245,215,110,.18);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;padding:0}
+.note-send-btn:hover{border-color:rgba(245,215,110,.4);background:rgba(245,215,110,.07)}
+.note-send-btn.hidden{display:none}
+.note-thistle{position:absolute;right:42px;bottom:6px;opacity:0;transition:opacity .5s ease;pointer-events:none}
+.note-thistle.visible{opacity:1}
+.note-confirm{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:12px;color:rgba(245,215,110,.45);padding:3px 12px 5px;min-height:20px;display:block;transition:opacity .5s}
+
+/* Roaming butterfly — needs-you state */
+/* position:fixed, viewport level, z-index:250, pointer-events:none */
+#roam-butterfly{position:fixed;width:110px;height:100px;pointer-events:none;z-index:250;display:none;transform-origin:55px 50px;}
+.roam-leftwings,.roam-rightwings{position:absolute;width:50%;height:100%;top:0;}
+.roam-leftwings{left:0}.roam-rightwings{right:0}
+.roam-slot-upper{position:relative;width:100%;height:58%;perspective:140px;perspective-origin:50% 50%;}
+.roam-slot-lower{position:relative;width:100%;height:42%;perspective:140px;perspective-origin:50% 50%;}
+.roam-wing{position:absolute;width:100%;height:100%;top:0;left:0;animation-iteration-count:infinite;animation-direction:alternate;animation-timing-function:ease-in-out;}
+.roam-wing svg{width:100%;height:100%;overflow:visible}
+.roam-upperwing-left{transform-origin:100% 50%;animation-name:roam-beat-left;animation-duration:1.8s;}
+.roam-lowerwing-left{transform-origin:100% 50%;animation-name:roam-beat-left;animation-duration:1.8s;animation-delay:0.3s;}
+.roam-upperwing-right{transform-origin:0% 50%;animation-name:roam-beat-right;animation-duration:1.8s;opacity:0.72;}
+.roam-lowerwing-right{transform-origin:0% 50%;animation-name:roam-beat-right;animation-duration:1.8s;animation-delay:0.3s;opacity:0.65;}
+@keyframes roam-beat-left{from{transform:rotateY(0deg)}to{transform:rotateY(60deg)}}
+@keyframes roam-beat-right{from{transform:rotateY(0deg)}to{transform:rotateY(-60deg)}}
+#roam-body-overlay{position:absolute;left:50%;top:0;transform:translateX(-50%);width:28px;height:100%;pointer-events:none;z-index:20;}
+#roam-body-overlay svg{width:100%;height:100%;overflow:visible}
+
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<!-- Roaming butterfly — viewport level, needs-you state -->
+<div id="roam-butterfly">
+  <div class="roam-leftwings">
+    <div class="roam-slot-upper">
+      <div class="roam-wing roam-upperwing-left">
+        <svg viewBox="0 0 55 58" preserveAspectRatio="xMaxYMid meet">
+          <path d="M54 48 C44 28,14 12,8 30 C2 48,22 62,54 58 Z" fill="#E8C847" opacity=".88"/>
+          <path d="M54 48 C44 28,14 12,8 30 C2 48,22 62,54 58 Z" fill="none" stroke="#C4A020" stroke-width=".6" opacity=".5"/>
+          <path d="M54 52 C42 46,26 38,14 28" fill="none" stroke="#A88C10" stroke-width=".5" opacity=".4"/>
+          <ellipse cx="22" cy="40" rx="5" ry="4" fill="#1a1a1a" opacity=".4"/>
+        </svg>
+      </div>
+    </div>
+    <div class="roam-slot-lower">
+      <div class="roam-wing roam-lowerwing-left">
+        <svg viewBox="0 0 55 42" preserveAspectRatio="xMaxYMid meet">
+          <path d="M54 58 C38 60,10 72,14 86 C18 98,44 92,54 72 Z" transform="translate(0,-58)" fill="#D4B832" opacity=".78"/>
+          <path d="M54 58 C38 60,10 72,14 86 C18 98,44 92,54 72 Z" transform="translate(0,-58)" fill="none" stroke="#B09820" stroke-width=".5" opacity=".4"/>
+          <ellipse cx="26" cy="18" rx="4" ry="3" fill="#1a1a1a" opacity=".3"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div class="roam-rightwings">
+    <div class="roam-slot-upper">
+      <div class="roam-wing roam-upperwing-right">
+        <svg viewBox="55 0 55 58" preserveAspectRatio="xMinYMid meet">
+          <path d="M56 48 C66 28,96 12,102 30 C108 48,88 62,56 58 Z" fill="#EDD04E" opacity=".88"/>
+          <path d="M56 48 C66 28,96 12,102 30 C108 48,88 62,56 58 Z" fill="none" stroke="#C4A020" stroke-width=".6" opacity=".5"/>
+          <path d="M56 52 C68 46,84 38,96 28" fill="none" stroke="#A88C10" stroke-width=".5" opacity=".4"/>
+          <ellipse cx="88" cy="40" rx="5" ry="4" fill="#1a1a1a" opacity=".4"/>
+        </svg>
+      </div>
+    </div>
+    <div class="roam-slot-lower">
+      <div class="roam-wing roam-lowerwing-right">
+        <svg viewBox="55 58 55 42" preserveAspectRatio="xMinYMid meet">
+          <path d="M56 58 C72 60,100 72,96 86 C92 98,66 92,56 72 Z" fill="#D9BE3C" opacity=".78"/>
+          <path d="M56 58 C72 60,100 72,96 86 C92 98,66 92,56 72 Z" fill="none" stroke="#B09820" stroke-width=".5" opacity=".4"/>
+          <ellipse cx="84" cy="76" rx="4" ry="3" fill="#1a1a1a" opacity=".3"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div id="roam-body-overlay">
+    <svg viewBox="0 0 28 100" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+      <ellipse cx="14" cy="62" rx="3.5" ry="18" fill="#2a2000" opacity=".9"/>
+      <ellipse cx="14" cy="62" rx="2"   ry="16" fill="#4a3a10" opacity=".6"/>
+      <circle  cx="14" cy="44" r="4.5"          fill="#2a2000" opacity=".85"/>
+      <circle  cx="14" cy="44" r="3"             fill="#4a3a10" opacity=".6"/>
+      <path d="M12 41 C9 34,3 26,0 20"   fill="none" stroke="#4a3a10" stroke-width="1" stroke-linecap="round" opacity=".8"/>
+      <circle cx="0"  cy="19" r="2" fill="#C4A020" opacity=".7"/>
+      <path d="M16 41 C19 34,25 26,28 20" fill="none" stroke="#4a3a10" stroke-width="1" stroke-linecap="round" opacity=".8"/>
+      <circle cx="28" cy="19" r="2" fill="#C4A020" opacity=".7"/>
+    </svg>
+  </div>
+</div>
+
+<div class="screen" id="screen">
+  <div class="name">Claudette</div>
+
+  <div class="stage-wrap">
+    <div class="aura" id="aura"></div>
+
+    <div class="flying-wrap" id="flying">
+      <div id="bwrap">
+        <svg width="100" height="92" viewBox="0 0 110 100">
+          <g id="wL" style="transform-origin:54px 50px">
+            <path d="M54 48 C44 28,14 12,8 30 C2 48,22 62,54 58 Z" fill="#E8C847" opacity=".88"/>
+            <path d="M54 48 C44 28,14 12,8 30 C2 48,22 62,54 58 Z" fill="none" stroke="#C4A020" stroke-width=".6" opacity=".5"/>
+            <path d="M54 52 C42 46,26 38,14 28" fill="none" stroke="#A88C10" stroke-width=".5" opacity=".4"/>
+            <ellipse cx="22" cy="40" rx="5" ry="4" fill="#1a1a1a" opacity=".4"/>
+            <path d="M54 58 C38 60,10 72,14 86 C18 98,44 92,54 72 Z" fill="#D4B832" opacity=".78"/>
+            <path d="M54 58 C38 60,10 72,14 86 C18 98,44 92,54 72 Z" fill="none" stroke="#B09820" stroke-width=".5" opacity=".4"/>
+            <ellipse cx="26" cy="76" rx="4" ry="3" fill="#1a1a1a" opacity=".3"/>
+          </g>
+          <g id="wR" style="transform-origin:56px 50px">
+            <path d="M56 48 C66 28,96 12,102 30 C108 48,88 62,56 58 Z" fill="#EDD04E" opacity=".88"/>
+            <path d="M56 48 C66 28,96 12,102 30 C108 48,88 62,56 58 Z" fill="none" stroke="#C4A020" stroke-width=".6" opacity=".5"/>
+            <path d="M56 52 C68 46,84 38,96 28" fill="none" stroke="#A88C10" stroke-width=".5" opacity=".4"/>
+            <ellipse cx="88" cy="40" rx="5" ry="4" fill="#1a1a1a" opacity=".4"/>
+            <path d="M56 58 C72 60,100 72,96 86 C92 98,66 92,56 72 Z" fill="#D9BE3C" opacity=".78"/>
+            <path d="M56 58 C72 60,100 72,96 86 C92 98,66 92,56 72 Z" fill="none" stroke="#B09820" stroke-width=".5" opacity=".4"/>
+            <ellipse cx="84" cy="76" rx="4" ry="3" fill="#1a1a1a" opacity=".3"/>
+          </g>
+          <ellipse cx="55" cy="62" rx="3.5" ry="18" fill="#2a2000" opacity=".9"/>
+          <ellipse cx="55" cy="62" rx="2" ry="16" fill="#4a3a10" opacity=".6"/>
+          <circle cx="55" cy="44" r="4.5" fill="#2a2000" opacity=".85"/>
+          <circle cx="55" cy="44" r="3" fill="#4a3a10" opacity=".6"/>
+          <g id="ant" style="transform-origin:55px 38px">
+            <path d="M53 41 C50 34,44 26,41 20" fill="none" stroke="#4a3a10" stroke-width="1" stroke-linecap="round" opacity=".8"/>
+            <circle cx="41" cy="19" r="2" fill="#C4A020" opacity=".7"/>
+            <path d="M57 41 C60 34,66 26,69 20" fill="none" stroke="#4a3a10" stroke-width="1" stroke-linecap="round" opacity=".8"/>
+            <circle cx="69" cy="19" r="2" fill="#C4A020" opacity=".7"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="resting-wrap" id="resting">
+      <svg width="220" height="170" viewBox="0 0 220 170">
+        <g style="animation:rest-sway 6s ease-in-out infinite;transform-origin:148px 150px">
+          <line x1="148" y1="150" x2="148" y2="165" stroke="#8a7040" stroke-width="1.8" stroke-linecap="round" opacity=".5"/>
+          <path d="M148 158 Q140 154 136 148" fill="none" stroke="#8a7040" stroke-width="1.2" stroke-linecap="round" opacity=".35"/>
+          <ellipse cx="148" cy="147" rx="6" ry="4.5" fill="#9a8040" opacity=".35"/>
+          <line x1="148" y1="143" x2="141" y2="132" stroke="#c4a060" stroke-width=".9" stroke-linecap="round" opacity=".55"/>
+          <line x1="148" y1="143" x2="145" y2="129" stroke="#c4a060" stroke-width=".9" stroke-linecap="round" opacity=".6"/>
+          <line x1="148" y1="143" x2="148" y2="127" stroke="#d4b070" stroke-width=".9" stroke-linecap="round" opacity=".65"/>
+          <line x1="148" y1="143" x2="151" y2="129" stroke="#c4a060" stroke-width=".9" stroke-linecap="round" opacity=".6"/>
+          <line x1="148" y1="143" x2="155" y2="132" stroke="#c4a060" stroke-width=".9" stroke-linecap="round" opacity=".55"/>
+          <circle cx="141" cy="131" r="1.2" fill="#d4b060" opacity=".7"/>
+          <circle cx="145" cy="128" r="1.4" fill="#e0bc68" opacity=".75"/>
+          <circle cx="148" cy="126" r="1.5" fill="#e8c470" opacity=".8"/>
+          <circle cx="151" cy="128" r="1.4" fill="#e0bc68" opacity=".75"/>
+          <circle cx="155" cy="131" r="1.2" fill="#d4b060" opacity=".7"/>
+        </g>
+        <g transform="translate(148,87)">
+          <ellipse cx="0" cy="0" rx="6.5" ry="9" fill="#5a5020" opacity=".4"/>
+          <line x1="0" y1="-7" x2="-6" y2="-18" stroke="#c06898" stroke-width=".9" stroke-linecap="round" opacity=".7"/>
+          <line x1="0" y1="-7" x2="-3" y2="-20" stroke="#cc72a8" stroke-width=".9" stroke-linecap="round" opacity=".75"/>
+          <line x1="0" y1="-7" x2="0" y2="-21" stroke="#d878b0" stroke-width="1" stroke-linecap="round" opacity=".8"/>
+          <line x1="0" y1="-7" x2="3" y2="-20" stroke="#cc72a8" stroke-width=".9" stroke-linecap="round" opacity=".75"/>
+          <line x1="0" y1="-7" x2="6" y2="-18" stroke="#c06898" stroke-width=".9" stroke-linecap="round" opacity=".7"/>
+          <line x1="0" y1="-7" x2="-8" y2="-15" stroke="#b85e8a" stroke-width=".7" stroke-linecap="round" opacity=".5"/>
+          <line x1="0" y1="-7" x2="8" y2="-15" stroke="#b85e8a" stroke-width=".7" stroke-linecap="round" opacity=".5"/>
+          <circle cx="-6" cy="-18" r="1.2" fill="#d870aa" opacity=".75"/>
+          <circle cx="-3" cy="-20" r="1.3" fill="#e07ab5" opacity=".8"/>
+          <circle cx="0" cy="-21" r="1.5" fill="#e882bc" opacity=".85"/>
+          <circle cx="3" cy="-20" r="1.3" fill="#e07ab5" opacity=".8"/>
+          <circle cx="6" cy="-18" r="1.2" fill="#d870aa" opacity=".75"/>
+        </g>
+        <g transform="translate(128,96)">
+          <ellipse cx="0" cy="0" rx="5" ry="7.5" fill="#5a5020" opacity=".35"/>
+          <line x1="0" y1="-5" x2="-5" y2="-14" stroke="#b86090" stroke-width=".8" stroke-linecap="round" opacity=".6"/>
+          <line x1="0" y1="-5" x2="0" y2="-16" stroke="#cc74a8" stroke-width=".85" stroke-linecap="round" opacity=".7"/>
+          <line x1="0" y1="-5" x2="4" y2="-14" stroke="#c06898" stroke-width=".8" stroke-linecap="round" opacity=".6"/>
+          <circle cx="-5" cy="-14" r="1.1" fill="#c86898" opacity=".7"/>
+          <circle cx="0" cy="-16" r="1.3" fill="#d878ac" opacity=".78"/>
+          <circle cx="4" cy="-14" r="1.1" fill="#c86898" opacity=".7"/>
+        </g>
+        <g transform="translate(163,106)">
+          <ellipse cx="0" cy="0" rx="4" ry="6.5" fill="#5a5020" opacity=".3"/>
+          <line x1="0" y1="-5" x2="-3" y2="-12" stroke="#b05888" stroke-width=".7" stroke-linecap="round" opacity=".55"/>
+          <line x1="0" y1="-5" x2="1" y2="-13" stroke="#c46ca0" stroke-width=".75" stroke-linecap="round" opacity=".62"/>
+          <line x1="0" y1="-5" x2="4" y2="-11" stroke="#b85e90" stroke-width=".7" stroke-linecap="round" opacity=".55"/>
+          <circle cx="-3" cy="-12" r="1" fill="#c06090" opacity=".65"/>
+          <circle cx="1" cy="-13" r="1.1" fill="#cc70a2" opacity=".72"/>
+          <circle cx="4" cy="-11" r="1" fill="#c06090" opacity=".65"/>
+        </g>
+        <g style="animation:rest-breathe 4.5s ease-in-out infinite;transform-origin:86px 100px">
+          <defs>
+            <radialGradient id="rg" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#e8c040" stop-opacity=".18"/>
+              <stop offset="55%" stop-color="#d4a820" stop-opacity=".07"/>
+              <stop offset="100%" stop-color="#c49010" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <ellipse cx="86" cy="100" rx="52" ry="36" fill="url(#rg)"/>
+          <g transform="translate(18,50) rotate(20,60,66)">
+            <g id="rwL" style="transform-origin:60px 53px;animation:wing-fold-l 7s ease-in-out infinite">
+              <path d="M60 53 C53 36,28 25,18 40 C10 53,32 67,60 61 Z" fill="#D8BC3C" opacity=".84"/>
+              <path d="M60 53 C53 36,28 25,18 40 C10 53,32 67,60 61 Z" fill="none" stroke="#B8980A" stroke-width=".6" opacity=".45"/>
+              <path d="M60 57 C48 52,33 44,22 38" fill="none" stroke="#9a7c10" stroke-width=".5" opacity=".35"/>
+              <ellipse cx="32" cy="45" rx="4" ry="3" fill="#1a1800" opacity=".38"/>
+            </g>
+            <g id="rwR" style="transform-origin:60px 61px;animation:wing-fold-r 7s ease-in-out infinite">
+              <path d="M60 61 C48 65,26 76,28 90 C30 101,52 97,60 79 Z" fill="#C8AE2E" opacity=".74"/>
+              <path d="M60 61 C48 65,26 76,28 90 C30 101,52 97,60 79 Z" fill="none" stroke="#a89020" stroke-width=".5" opacity=".38"/>
+              <ellipse cx="36" cy="80" rx="3.5" ry="2.8" fill="#1a1800" opacity=".28"/>
+            </g>
+            <ellipse cx="60" cy="70" rx="2.8" ry="17" fill="#221800" opacity=".88"/>
+            <ellipse cx="60" cy="70" rx="1.6" ry="15" fill="#3a2c08" opacity=".55"/>
+            <circle cx="60" cy="51" r="3.8" fill="#221800" opacity=".85"/>
+            <circle cx="60" cy="51" r="2.3" fill="#3a2c08" opacity=".6"/>
+            <path d="M59 48 C57 41,53 34,51 28" fill="none" stroke="#3a2c08" stroke-width=".9" stroke-linecap="round" opacity=".78"/>
+            <circle cx="51" cy="27" r="1.7" fill="#C8A820" opacity=".72"/>
+            <path d="M61 48 C63 41,67 34,69 28" fill="none" stroke="#3a2c08" stroke-width=".9" stroke-linecap="round" opacity=".78"/>
+            <circle cx="69" cy="27" r="1.7" fill="#C8A820" opacity=".72"/>
+          </g>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <div class="status-area">
+    <span class="status-label" id="slabel">gathering herself</span>
+    <div class="wave-container" id="wave">
+      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+    </div>
+  </div>
+
+  <div id="mem-warn" style="display:none;background:#5c1a1a;color:#f5d76e;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;padding:10px 16px;text-align:center;letter-spacing:.02em;">
+    memory not written — transcript is safe locally. retry: python memory_writer.py --transcript transcripts/YYYY-MM-DD.txt --retry
+  </div>
+  <div class="thread" id="thread"></div>
+
+  <!-- Note field — reverse flower. Always visible. Thistle appears when note is waiting. -->
+  <div class="note-area" id="note-area">
+    <div class="note-field-wrap">
+      <textarea class="note-textarea" id="note-input" rows="1" placeholder="leave something for Claudette…"></textarea>
+      <button class="note-send-btn" id="note-send-btn" onclick="submitNote()" title="leave for Claudette">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 1v8M2 5l4 4 4-4" stroke="rgba(245,215,110,0.5)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <!-- Thistle — same character as TC1's resting scene, scaled for the field corner -->
+      <svg class="note-thistle" id="note-thistle" width="20" height="30" viewBox="0 0 22 34" xmlns="http://www.w3.org/2000/svg">
+        <path d="M11,33 Q10.5,26 10,22 Q10.5,17 11,13" stroke="#8a7040" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        <path d="M10,22 Q7,21 5.5,19.5" stroke="#8a7040" stroke-width=".9" fill="none" stroke-linecap="round"/>
+        <path d="M11,17 Q14,16 15.5,14.5" stroke="#8a7040" stroke-width=".9" fill="none" stroke-linecap="round"/>
+        <ellipse cx="11" cy="9" rx="5" ry="4" fill="#5a5020" opacity=".45"/>
+        <line x1="11" y1="7" x2="8"    y2="3"   stroke="#c06898" stroke-width=".9" stroke-linecap="round" opacity=".7"/>
+        <line x1="11" y1="7" x2="9.5"  y2="2"   stroke="#cc72a8" stroke-width=".9" stroke-linecap="round" opacity=".75"/>
+        <line x1="11" y1="7" x2="11"   y2="1.5" stroke="#d878b0" stroke-width="1"  stroke-linecap="round" opacity=".8"/>
+        <line x1="11" y1="7" x2="12.5" y2="2"   stroke="#cc72a8" stroke-width=".9" stroke-linecap="round" opacity=".75"/>
+        <line x1="11" y1="7" x2="14"   y2="3"   stroke="#c06898" stroke-width=".9" stroke-linecap="round" opacity=".7"/>
+        <circle cx="8"    cy="3"   r="1.2" fill="#d870aa" opacity=".75"/>
+        <circle cx="9.5"  cy="2"   r="1.3" fill="#e07ab5" opacity=".8"/>
+        <circle cx="11"   cy="1.5" r="1.4" fill="#e882bc" opacity=".85"/>
+        <circle cx="12.5" cy="2"   r="1.3" fill="#e07ab5" opacity=".8"/>
+        <circle cx="14"   cy="3"   r="1.2" fill="#d870aa" opacity=".75"/>
+        <ellipse cx="5.5" cy="19" rx="3.2" ry="2.4" fill="#5a5020" opacity=".38"/>
+        <line x1="5.5" y1="17.5" x2="3.5" y2="14.5" stroke="#b86090" stroke-width=".75" stroke-linecap="round" opacity=".6"/>
+        <line x1="5.5" y1="17.5" x2="5.5" y2="13.5" stroke="#cc74a8" stroke-width=".8"  stroke-linecap="round" opacity=".7"/>
+        <line x1="5.5" y1="17.5" x2="7.5" y2="14.5" stroke="#c06898" stroke-width=".75" stroke-linecap="round" opacity=".6"/>
+        <circle cx="3.5" cy="14.5" r="1"   fill="#c86898" opacity=".7"/>
+        <circle cx="5.5" cy="13.5" r="1.1" fill="#d878ac" opacity=".78"/>
+        <circle cx="7.5" cy="14.5" r="1"   fill="#c86898" opacity=".7"/>
+        <ellipse cx="15.5" cy="14" rx="3" ry="2.2" fill="#5a5020" opacity=".33"/>
+        <line x1="15.5" y1="12.5" x2="13.5" y2="9.5"  stroke="#b05888" stroke-width=".7"  stroke-linecap="round" opacity=".55"/>
+        <line x1="15.5" y1="12.5" x2="15.5" y2="9"    stroke="#c46ca0" stroke-width=".75" stroke-linecap="round" opacity=".62"/>
+        <line x1="15.5" y1="12.5" x2="17.5" y2="9.5"  stroke="#b85e90" stroke-width=".7"  stroke-linecap="round" opacity=".55"/>
+        <circle cx="13.5" cy="9.5" r="1"   fill="#c06090" opacity=".65"/>
+        <circle cx="15.5" cy="9"   r="1.1" fill="#cc70a2" opacity=".72"/>
+        <circle cx="17.5" cy="9.5" r="1"   fill="#c06090" opacity=".65"/>
+      </svg>
+    </div>
+    <div class="note-confirm" id="note-confirm" style="opacity:0"></div>
+  </div>
+
+  <!-- Library toggle -->
+  <div style="width:100%;padding:0 20px 2px;flex-shrink:0">
+    <button class="library-btn" id="library-btn" onclick="toggleLibrary()">give her the afternoon</button>
+  </div>
+
+  <div class="input-area" style="flex-wrap:wrap;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px;width:100%">
+      <label class="upload-btn" id="upload-btn" title="Attach image or PDF">
+        <svg viewBox="0 0 16 16" fill="none" stroke="rgba(245,215,110,.5)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12l3-3 2 2 4-5 3 4"/>
+          <rect x="1" y="1" width="14" height="14" rx="2"/>
+        </svg>
+        <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.mp4,.mov,.m4v" onchange="handleFile(this)">
+      </label>
+      <textarea
+        class="text-input"
+        id="input"
+        placeholder="say something…"
+        autocomplete="off"
+        rows="1"
+        disabled
+      ></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>
+        <svg viewBox="0 0 16 16" fill="none" stroke="rgba(245,215,110,.7)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 8h10M9 4l4 4-4 4"/>
+        </svg>
+      </button>
+      <!-- Voice toggle — speech input + TTS output -->
+      <button class="voice-btn" id="voice-btn" onclick="toggleVoice()" title="voice on / off">
+        <svg viewBox="0 0 16 16" fill="none" stroke="rgba(245,215,110,.6)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 2a3 3 0 0 1 3 3v3a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+          <path d="M3 9a5 5 0 0 0 10 0"/>
+          <line x1="8" y1="14" x2="8" y2="16"/>
+        </svg>
+      </button>
+      <!-- Session length indicator — 10 segments, fills as session grows -->
+      <svg id="session-indicator" width="28" height="28" viewBox="0 0 28 28" style="flex-shrink:0" title="session length"></svg>
+      <!-- Eye indicator — camera state, lights briefly when a frame is captured -->
+      <svg class="eye-indicator" id="eye-indicator" width="28" height="28" viewBox="0 0 28 28" title="she can see">
+        <ellipse cx="14" cy="14" rx="10" ry="6.5" fill="none" stroke="rgba(245,215,110,1)" stroke-width="1.2"/>
+        <circle cx="14" cy="14" r="4" fill="rgba(245,215,110,.85)"/>
+        <circle cx="14" cy="14" r="1.8" fill="#2a2a2a"/>
+        <circle cx="15.4" cy="12.6" r=".7" fill="rgba(255,255,255,.4)"/>
+      </svg>
+    </div>
+    <div class="attachment-preview hidden" id="attachment-preview"></div>
+  </div>
+</div>
+
+<script>
+var SERVER = 'http://100.89.230.113:5001';
+var thinking = false;
+var sessionActive = false;
+var sessionEnding = false;
+
+// ── Butterfly state ────────────────────────────────────────────────────────
+
+var states = {
+  waking: {
+    label:'gathering herself', wave:false, resting:false,
+    bfly:'drift-slow 7s ease-in-out infinite',
+    wL:'fl-slow 2.2s ease-in-out infinite', wR:'fr-slow 2.2s ease-in-out infinite',
+    ant:'ant-slow 4.5s ease-in-out infinite', aura:'aura-waking 5s ease-in-out infinite'
+  },
+  thinking: {
+    label:'', wave:true, resting:false,
+    bfly:'drift-active 4.5s ease-in-out infinite',
+    wL:'fl-fast 0.85s ease-in-out infinite', wR:'fr-fast 0.85s ease-in-out infinite',
+    ant:'ant-fast 2.4s ease-in-out infinite', aura:'aura-thinking 2s ease-in-out infinite'
+  },
+  ready: {
+    label:'', wave:false, resting:false,
+    bfly:'drift-slow 7s ease-in-out infinite',
+    wL:'fl-slow 2.2s ease-in-out infinite', wR:'fr-slow 2.2s ease-in-out infinite',
+    ant:'ant-slow 4.5s ease-in-out infinite', aura:'aura-waking 5s ease-in-out infinite'
+  },
+  waiting: {
+    label:'', wave:false, resting:true,
+    aura:'aura-waiting 4.5s ease-in-out infinite'
+  }
+};
+
+function setButterfly(name) {
+  currentState = name;
+
+  // needs-you — stage butterfly fades out, roaming butterfly appears
+  if (name === 'needs-you') {
+    document.getElementById('flying').style.opacity = '0';
+    document.getElementById('resting').style.opacity = '0';
+    document.getElementById('slabel').style.opacity = '0';
+    document.getElementById('wave').style.opacity = '0';
+    document.getElementById('aura').style.animation = 'aura-waking 5s ease-in-out infinite';
+    roamingEngine.start();
+    return;
+  }
+
+  // Any other state — stop roaming, restore stage butterfly
+  roamingEngine.stop();
+
+  var s = states[name];
+  if (!s) return;
+  document.getElementById('slabel').textContent = s.label;
+  document.getElementById('slabel').style.opacity = s.label ? '1' : '0';
+  document.getElementById('wave').style.opacity = s.wave ? '1' : '0';
+  var fw = document.getElementById('flying');
+  var rw = document.getElementById('resting');
+  if (s.resting) {
+    fw.style.opacity = '0'; rw.style.opacity = '1';
+  } else {
+    fw.style.opacity = '1'; rw.style.opacity = '0';
+    document.getElementById('bwrap').style.animation = s.bfly;
+    document.getElementById('wL').style.animation = s.wL;
+    document.getElementById('wR').style.animation = s.wR;
+    document.getElementById('ant').style.animation = s.ant;
+  }
+  document.getElementById('aura').style.animation = s.aura;
+}
+
+// ── Thread rendering ───────────────────────────────────────────────────────
+
+function addMessage(speaker, text) {
+  var thread = document.getElementById('thread');
+  var div = document.createElement('div');
+  div.className = 'msg ' + speaker.toLowerCase();
+  div.style.animation = 'fadein .4s ease';
+  div.innerHTML =
+    '<div class="msg-speaker">' + speaker + '</div>' +
+    '<div class="msg-text">' + text.replace(/\n/g, '<br>') + '</div>';
+  thread.appendChild(div);
+  thread.scrollTop = thread.scrollHeight;
+
+  if (speaker.toLowerCase() === 'claudette' && voiceMode) {
+    speakText(text);
+  }
+}
+
+function addError(text) {
+  var thread = document.getElementById('thread');
+  var div = document.createElement('div');
+  div.className = 'msg-error';
+  div.style.animation = 'fadein .3s ease';
+  div.textContent = text;
+  thread.appendChild(div);
+  thread.scrollTop = thread.scrollHeight;
+}
+
+// ── Voice mode ─────────────────────────────────────────────────────────────
+
+var voiceMode = false;
+var currentAudio = null;
+var recognition = null;
+var recognitionActive = false;
+
+function initRecognition() {
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return false;
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-GB';
+  recognition.onresult = function(event) {
+    var transcript = '';
+    for (var i = event.resultIndex; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
+    }
+    document.getElementById('input').value = transcript;
+    var lastResult = event.results[event.results.length - 1];
+    if (lastResult.isFinal) {
+      var text = lastResult[0].transcript.trim().toLowerCase();
+      if (text.endsWith('send')) {
+        var inputEl = document.getElementById('input');
+        inputEl.value = inputEl.value.replace(/\s*send\s*$/i, '').trim();
+        if (inputEl.value) sendMessage();
+      }
+    }
+  };
+  recognition.onend = function() {
+    if (voiceMode && recognitionActive) { recognition.start(); }
+  };
+  recognition.onerror = function(e) {
+    if (e.error !== 'no-speech') { recognitionActive = false; }
+  };
+  return true;
+}
+
+function toggleVoice() {
+  voiceMode = !voiceMode;
+  var btn = document.getElementById('voice-btn');
+  var screen = document.querySelector('.screen');
+  if (voiceMode) {
+    btn.classList.add('active');
+    screen.classList.add('voice-mode-on');
+    document.getElementById('input').value = ''; // clear field on voice activate — prevents stale transcript injection
+    if (!recognition) initRecognition();
+    if (recognition) { recognitionActive = true; try { recognition.start(); } catch(e) {} }
+  } else {
+    btn.classList.remove('active');
+    screen.classList.remove('voice-mode-on');
+    if (recognition) { recognitionActive = false; try { recognition.stop(); } catch(e) {} }
+    document.getElementById('input').value = '';
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  }
+}
+
+async function speakText(text) {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  try {
+    var resp = await fetch(SERVER + '/speak', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text: text})
+    });
+    if (!resp.ok) return;
+    var blob = await resp.blob();
+    var url = URL.createObjectURL(blob);
+    var audio = new Audio(url);
+    currentAudio = audio;
+    audio.onended = function() { currentAudio = null; URL.revokeObjectURL(url); };
+    audio.onerror = function() { currentAudio = null; URL.revokeObjectURL(url); };
+    audio.play();
+  } catch(e) {}
+}
+
+// ── The Eye — camera frame capture ────────────────────────────────────────────
+
+var cameraActive = false;
+var midSessionTimer = null;
+var MID_SESSION_MS = 25 * 60 * 1000; // 25 minutes
+
+/**
+ * Capture a single frame from the device camera and send to /see.
+ * The frame is held server-side as pending_visual — included with the next /message call.
+ * occasion: 'session_start' | 'mid-session' | 'goodbye' | 'requested'
+ * Fails silently — camera unavailable or permission denied never breaks the session.
+ */
+async function captureAndSendFrame(occasion) {
+  if (cameraActive) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+
+  var indicator = document.getElementById('eye-indicator');
+  cameraActive = true;
+
+  try {
+    var stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+
+    var canvas = document.createElement('canvas');
+    var video = document.createElement('video');
+    video.srcObject = stream;
+    video.muted = true;
+
+    await new Promise(function(resolve) {
+      video.onloadedmetadata = function() {
+        video.play();
+        // Brief settle time so the frame isn't black
+        setTimeout(function() {
+          canvas.width  = video.videoWidth  || 640;
+          canvas.height = video.videoHeight || 480;
+          canvas.getContext('2d').drawImage(video, 0, 0);
+          resolve();
+        }, 600);
+      };
+    });
+
+    // Stop stream immediately — camera light off
+    stream.getTracks().forEach(function(t) { t.stop(); });
+
+    var b64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+
+    await fetch(SERVER + '/see', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ b64: b64, media_type: 'image/jpeg', occasion: occasion })
+    });
+
+    // Flash the eye indicator
+    if (indicator) {
+      indicator.classList.remove('active');
+      void indicator.offsetWidth; // reflow to restart animation
+      indicator.classList.add('active');
+      // Animation ends in 2s — clean up class after
+      setTimeout(function() { indicator.classList.remove('active'); }, 2200);
+    }
+
+  } catch(e) {
+    // Permission denied, unavailable, or HTTPS required — continue without frame
+  } finally {
+    cameraActive = false;
+  }
+}
+
+function startMidSessionTimer() {
+  clearMidSessionTimer();
+  midSessionTimer = setTimeout(function() {
+    if (sessionActive) captureAndSendFrame('mid-session');
+  }, MID_SESSION_MS);
+}
+
+function clearMidSessionTimer() {
+  if (midSessionTimer) { clearTimeout(midSessionTimer); midSessionTimer = null; }
+}
+
+// ── Library mode ───────────────────────────────────────────────────────────
+
+var libraryActive = false;
+
+async function syncLibraryState() {
+  try {
+    var resp = await fetch(SERVER + '/library/status');
+    var data = await resp.json();
+    if (data.active) {
+      libraryActive = true;
+      var btn = document.getElementById('library-btn');
+      btn.textContent = 'close the library';
+      btn.classList.add('active');
+    }
+  } catch(e) {}
+}
+
+async function toggleLibrary() {
+  var btn = document.getElementById('library-btn');
+  btn.disabled = true;
+  if (!libraryActive) {
+    try {
+      await fetch(SERVER + '/library/start', { method: 'POST' });
+      libraryActive = true;
+      btn.textContent = 'close the library';
+      btn.classList.add('active');
+    } catch(e) {}
+  } else {
+    try {
+      await fetch(SERVER + '/library/stop', { method: 'POST' });
+      libraryActive = false;
+      btn.textContent = 'give her the afternoon';
+      btn.classList.remove('active');
+    } catch(e) {}
+  }
+  btn.disabled = false;
+}
+
+// ── Session length indicator ───────────────────────────────────────────────
+
+function updateSessionIndicator(chars) {
+  var SEGMENTS = 10, FULL = 60000, GAP = 4;
+  var svg = document.getElementById('session-indicator');
+  if (!svg) return;
+  var filled = Math.min(Math.floor(chars / (FULL / SEGMENTS)), SEGMENTS);
+  var cx = 14, cy = 14, oR = 12, iR = 7, seg = 360 / SEGMENTS;
+  var paths = '';
+  for (var i = 0; i < SEGMENTS; i++) {
+    var a1 = (i * seg + GAP / 2 - 90) * Math.PI / 180;
+    var a2 = ((i + 1) * seg - GAP / 2 - 90) * Math.PI / 180;
+    var x1 = cx + oR * Math.cos(a1), y1 = cy + oR * Math.sin(a1);
+    var x2 = cx + oR * Math.cos(a2), y2 = cy + oR * Math.sin(a2);
+    var x3 = cx + iR * Math.cos(a2), y3 = cy + iR * Math.sin(a2);
+    var x4 = cx + iR * Math.cos(a1), y4 = cy + iR * Math.sin(a1);
+    var c = i < filled ? 'rgba(245,215,110,.75)' : 'rgba(245,215,110,.10)';
+    paths += '<path d="M' + x1.toFixed(2) + ' ' + y1.toFixed(2)
+           + ' A' + oR + ' ' + oR + ' 0 0 1 ' + x2.toFixed(2) + ' ' + y2.toFixed(2)
+           + ' L' + x3.toFixed(2) + ' ' + y3.toFixed(2)
+           + ' A' + iR + ' ' + iR + ' 0 0 0 ' + x4.toFixed(2) + ' ' + y4.toFixed(2)
+           + ' Z" fill="' + c + '"/>';
+  }
+  svg.innerHTML = paths;
+}
+
+// ── Session lifecycle ──────────────────────────────────────────────────────
+
+async function startSession() {
+  setButterfly('waking');
+  try {
+    var resp = await fetch(SERVER + '/start', {method:'POST'});
+    var data = await resp.json();
+    sessionActive = true;
+    sessionEnding = false;
+    clearNote(); // note has been read — clear field and hide thistle
+    updateSessionIndicator(0);
+    setButterfly(data.waiting_to_raise ? 'needs-you' : 'ready');
+    resetInactivityTimer();
+    document.getElementById('input').disabled = false;
+    document.getElementById('send-btn').disabled = false;
+    document.getElementById('input').focus();
+    if (!data.retrieval_ok) {
+      addError('Memory unavailable — first session or GitHub unreachable. Continuing without context.');
+    }
+    syncLibraryState();
+    // Capture session-start frame — Claudette arrives seeing the room before she hears anything.
+    // This also triggers the camera permission prompt on first use.
+    captureAndSendFrame('session_start');
+    startMidSessionTimer();
+  } catch(e) {
+    document.getElementById('slabel').textContent = 'server not running';
+    document.getElementById('slabel').style.opacity = '1';
+    addError('Could not connect to server. Start server.py first: python server.py');
+  }
+}
+
+var pendingAttachment = null;
+
+function handleFile(input) {
+  var file = input.files[0];
+  if (!file) return;
+  pendingAttachment = file;
+  var preview = document.getElementById('attachment-preview');
+  preview.textContent = file.name;
+  preview.classList.remove('hidden');
+  input.value = '';
+}
+
+async function streamClaudetteReply(resp) {
+  // Create Claudette message element immediately — text fills in as chunks arrive.
+  // speakText() is called after done fires, with done.reply (the clean processed version).
+  // addMessage() is not used here — it calls speakText immediately with full text,
+  // and cannot be called before the reply exists.
+  var thread = document.getElementById('thread');
+  var div = document.createElement('div');
+  div.className = 'msg claudette';
+  div.style.animation = 'fadein .4s ease';
+  div.innerHTML = '<div class="msg-speaker">Claudette</div><div class="msg-text"></div>';
+  thread.appendChild(div);
+  var textEl = div.querySelector('.msg-text');
+  thread.scrollTop = thread.scrollHeight;
+
+  var reader = resp.body.getReader();
+  var decoder = new TextDecoder();
+  var buffer = '';
+  var accumulated = '';
+  var doneData = null;
+
+  try {
+    outer: while (true) {
+      var result = await reader.read();
+      if (result.done) break;
+      buffer += decoder.decode(result.value, {stream: true});
+
+      // SSE events are delimited by \n\n — split and process complete events only.
+      // The trailing incomplete event stays in buffer for the next read.
+      var events = buffer.split('\n\n');
+      buffer = events.pop();
+
+      for (var i = 0; i < events.length; i++) {
+        var line = events[i].trim();
+        if (!line.startsWith('data: ')) continue;
+        try {
+          var parsed = JSON.parse(line.slice(6));
+          if (parsed.chunk !== undefined) {
+            accumulated += parsed.chunk;
+            textEl.innerHTML = accumulated.replace(/\n/g, '<br>');
+            thread.scrollTop = thread.scrollHeight;
+          } else if (parsed.done) {
+            doneData = parsed;
+            break outer;
+          } else if (parsed.error) {
+            thread.removeChild(div);
+            addError(parsed.error);
+            return null;
+          }
+        } catch(pe) {}
+      }
+    }
+  } catch(e) {
+    addError('Connection lost. Is server.py still running?');
+    return null;
+  }
+
+  if (!doneData) {
+    // Stream closed without a done event.
+    addError('Connection lost. Is server.py still running?');
+    return null;
+  }
+
+  // Call speakText with the complete processed reply from the done event.
+  // done.reply has command strings stripped server-side — cleaner than accumulated chunks.
+  if (voiceMode) speakText(doneData.reply);
+
+  return doneData;
+}
+
+async function sendMessage() {
+  if (thinking || !sessionActive) return;
+  var input = document.getElementById('input');
+  var text = input.value.trim();
+  if (!text) return;
+
+  // Check for goodbye
+  var lower = text.toLowerCase();
+  if (['bye','bye bye','doei','tot straks','goodbye'].indexOf(lower) !== -1) {
+    console.log('[goodbye] detected:', text);
+    addMessage('Jeanette', text);
+    input.value = '';
+    input.disabled = true;
+    document.getElementById('send-btn').disabled = true;
+    thinking = true;
+    setButterfly('thinking');
+
+    // Final API call — goodbye message.
+    // This puts the goodbye exchange in the transcript before /end runs,
+    // so the memory writer processes it as part of the session.
+    try {
+      // SSE stream — must fully await done before endSession() runs.
+      // TC8-003 guarantees the goodbye exchange is written to transcript before
+      // done fires. Calling endSession() before done means the goodbye is lost.
+      var gResp = await fetch(SERVER + '/message', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({message: text})
+      });
+      var gDone = await streamClaudetteReply(gResp);
+      console.log('[goodbye] streamClaudetteReply returned:', gDone);
+      if (gDone && gDone.session_chars !== undefined) {
+        updateSessionIndicator(gDone.session_chars);
+      }
+    } catch(e) {}
+
+    thinking = false;
+    console.log('[goodbye] calling endSession()');
+    await endSession();
+    return;
+  }
+
+  addMessage('Jeanette', text);
+  input.value = '';
+  input.disabled = true;
+  document.getElementById('send-btn').disabled = true;
+  thinking = true;
+  resetInactivityTimer();
+  setButterfly('thinking');
+
+  try {
+    // Handle attachment if present
+    var messagePayload = {message: text};
+    if (pendingAttachment) {
+      try {
+        var formData = new FormData();
+        formData.append('file', pendingAttachment);
+        var uploadResp = await fetch(SERVER + '/upload', {method:'POST', body:formData});
+        var uploadData = await uploadResp.json();
+        if (uploadData.type === 'image') {
+          messagePayload.image = {media_type: uploadData.media_type, b64: uploadData.b64};
+          // Show image in thread
+          var img = document.createElement('img');
+          img.src = 'data:' + uploadData.media_type + ';base64,' + uploadData.b64;
+          img.className = 'msg-image';
+          var thread = document.getElementById('thread');
+          var wrapper = document.createElement('div');
+          wrapper.className = 'msg jeanette';
+          wrapper.style.animation = 'fadein .4s ease';
+          wrapper.appendChild(img);
+          thread.appendChild(wrapper);
+          thread.scrollTop = thread.scrollHeight;
+        } else if (uploadData.type === 'video') {
+          messagePayload.images = uploadData.frames;
+          // Show frame count in thread as attachment indicator
+          var preview = document.getElementById('attachment-preview');
+          preview.textContent = uploadData.filename + ' (' + uploadData.frame_count + ' frames)';
+          preview.classList.remove('hidden');
+        } else if (uploadData.type === 'pdf' || uploadData.type === 'pdf_unavailable') {
+          messagePayload.message = text + '\n\n[PDF: ' + uploadData.filename + ']\n' + uploadData.content;
+        } else if (uploadData.error) {
+          addError(uploadData.error);
+        }
+      } catch(ue) {
+        addError('Could not upload file.');
+      }
+      pendingAttachment = null;
+      var preview = document.getElementById('attachment-preview');
+      preview.classList.add('hidden');
+      preview.textContent = '';
+    }
+
+    // URL fetch enrichment
+    var urlMatch = text.match(/https?:\/\/[^\s]+/);
+    if (urlMatch && !messagePayload.image) {
+      try {
+        var fetchResp = await fetch(SERVER + '/fetch', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({url: urlMatch[0]})
+        });
+        var fetchData = await fetchResp.json();
+        if (fetchData.content) {
+          messagePayload.message = text + '\n\n[Page content from ' + urlMatch[0] + ':]\n' + fetchData.content;
+        }
+      } catch(fe) {}
+    }
+
+    var resp = await fetch(SERVER + '/message', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(messagePayload)
+    });
+    var done = await streamClaudetteReply(resp);
+    if (done) {
+      if (done.session_chars !== undefined) updateSessionIndicator(done.session_chars);
+      resetInactivityTimer();
+      if (done.view_requested) captureAndSendFrame('requested');
+    }
+  } catch(e) {
+    addError('Connection lost. Is server.py still running?');
+  }
+
+  thinking = false;
+  setButterfly('ready');
+  input.disabled = false;
+  document.getElementById('send-btn').disabled = false;
+  input.focus();
+}
+
+async function endSession() {
+  if (sessionEnding) return;
+  sessionEnding = true;
+  clearMidSessionTimer();
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  if (recognition) { recognitionActive = false; try { recognition.stop(); } catch(e) {} }
+  if (libraryActive) {
+    libraryActive = false;
+    try { await fetch(SERVER + '/library/stop', { method: 'POST' }); } catch(e) {}
+    var lbtn = document.getElementById('library-btn');
+    lbtn.textContent = 'give her the afternoon';
+    lbtn.classList.remove('active');
+  }
+
+  sessionActive = false;
+  thinking = false;
+  clearInactivityTimer();
+  roamingEngine.stop();
+  updateSessionIndicator(0);
+  document.getElementById('input').disabled = true;
+  document.getElementById('send-btn').disabled = true;
+  setButterfly('waking');
+  document.getElementById('slabel').textContent = 'tot straks';
+  document.getElementById('slabel').style.opacity = '1';
+
+  try {
+    console.log('[goodbye] fetch /end firing');
+    var endResp = await fetch(SERVER + '/end', {method:'POST'});
+    var endData = await endResp.json();
+    if (endData && endData.memory_written === false) {
+      document.getElementById('mem-warn').style.display = 'block';
+    }
+  } catch(e) {}
+}
+
+// ── Keyboard ───────────────────────────────────────────────────────────────
+
+var textarea = document.getElementById('input');
+textarea.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+textarea.addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+// ── Note field — reverse flower ───────────────────────────────────────────
+
+var noteWaiting = false;
+
+var noteTextarea = document.getElementById('note-input');
+var noteThistle  = document.getElementById('note-thistle');
+var noteConfirm  = document.getElementById('note-confirm');
+
+noteTextarea.addEventListener('input', function() {
+  // Auto-grow
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 88) + 'px';
+  // Thistle visibility
+  if (this.value.trim().length > 0) {
+    noteThistle.classList.add('visible');
+    noteWaiting = true;
+  } else {
+    noteThistle.classList.remove('visible');
+    noteWaiting = false;
+  }
+});
+
+noteTextarea.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    submitNote();
+  }
+});
+
+async function submitNote() {
+  var text = noteTextarea.value.trim();
+  if (!text) return;
+  noteWaiting = true;
+  noteTextarea.value = '';
+  noteTextarea.style.height = 'auto';
+  document.getElementById('note-send-btn').classList.add('hidden');
+  noteThistle.classList.add('visible');
+  noteConfirm.textContent = 'left for her';
+  noteConfirm.style.opacity = '1';
+  setTimeout(function() { noteConfirm.style.opacity = '0'; }, 2500);
+  // Send to server — silent catch, UI already confirmed
+  try {
+    await fetch(SERVER + '/note', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text: text})
+    });
+  } catch(e) {}
+}
+
+function clearNote() {
+  noteTextarea.value = '';
+  noteTextarea.style.height = 'auto';
+  noteWaiting = false;
+  noteThistle.classList.remove('visible');
+  noteConfirm.style.opacity = '0';
+  document.getElementById('note-send-btn').classList.remove('hidden');
+}
+
+// ── Roaming butterfly engine — IIFE scoped, no global pollution ───────────────
+
+var roamingEngine = (function() {
+  var roamEl = null;
+  var roamRAF = null;
+  var roamWingEls = null;
+
+  var BASE_T_SPEED = 0.00180;
+  var RANGE = 0.20;
+  var LOOKAHEAD = 0.35;
+  var varTarget = 0.0, varActual = 0.0;
+  var lastVarChange = 0, VAR_INTERVAL = 13000;
+  var lastAppliedRate = 1.0;
+  var waypoints = [];
+  var pathT = 0;
+  var smoothedAngle = 0;
+
+  function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
+
+  function nextWaypoint(fromX, fromY) {
+    var northBand = Math.random() < 0.5;
+    var offset = rnd(-33, 33);
+    var headDeg = northBand ? offset : 180 + offset;
+    var cx = 0.5, cy = 0.5;
+    var distFromCentre = Math.sqrt(Math.pow(fromX-cx,2)+Math.pow(fromY-cy,2));
+    if (distFromCentre > 0.70) {
+      var toCentreX = cx-fromX, toCentreY = cy-fromY;
+      var toCentreDeg = 90 - Math.atan2(-toCentreY, toCentreX)*180/Math.PI;
+      var distN = Math.abs(((toCentreDeg%360)+360)%360); if(distN>180)distN=360-distN;
+      var distS = Math.abs(((toCentreDeg-180+360)%360)); if(distS>180)distS=360-distS;
+      northBand = distN < distS;
+      offset = rnd(-25,25);
+      headDeg = northBand ? offset : 180+offset;
+    }
+    var headRad = headDeg*Math.PI/180;
+    var dx = Math.sin(headRad), dy = -Math.cos(headRad);
+    var isOffScreen = (fromX<0||fromX>1||fromY<0||fromY>1);
+    var dist = isOffScreen ? rnd(0.25,0.45) : rnd(0.30,0.60);
+    return { x: fromX+dx*dist+rnd(-0.03,0.03), y: fromY+dy*dist+rnd(-0.02,0.02) };
+  }
+
+  function getWP(i) {
+    while (i+3 >= waypoints.length) {
+      var last = waypoints[waypoints.length-1];
+      waypoints.push(nextWaypoint(last.x, last.y));
+    }
+    return waypoints[Math.max(0,i)];
+  }
+
+  function pathPos(pt) {
+    var i=Math.floor(pt), lt=pt-i;
+    var W=window.innerWidth, H=window.innerHeight;
+    var a=getWP(i), b=getWP(i+1);
+    return { x:(a.x+(b.x-a.x)*lt)*W-55, y:(a.y+(b.y-a.y)*lt)*H-50 };
+  }
+
+  function pathAngle(pt) {
+    var pA=pathPos(pt), pB=pathPos(pt+LOOKAHEAD);
+    return Math.atan2(pB.y-pA.y, pB.x-pA.x);
+  }
+
+  function pruneWaypoints() {
+    var behind=Math.floor(pathT)-4;
+    if(behind>10){ waypoints.splice(0,behind); pathT-=behind; }
+  }
+
+  function wrapAngle(a) {
+    while(a> Math.PI) a-=2*Math.PI;
+    while(a<-Math.PI) a+=2*Math.PI;
+    return a;
+  }
+
+  function applyBeat(mult) {
+    var rate=Math.round(mult*100)/100;
+    if(Math.abs(rate-lastAppliedRate)<0.01) return;
+    lastAppliedRate=rate;
+    if (!roamWingEls) return;
+    for(var i=0;i<roamWingEls.length;i++){
+      var anims=roamWingEls[i].getAnimations?roamWingEls[i].getAnimations():[];
+      for(var j=0;j<anims.length;j++) anims[j].playbackRate=rate;
+    }
+  }
+
+  function step(ts) {
+    if(!lastVarChange) lastVarChange=ts;
+    if(ts-lastVarChange>VAR_INTERVAL){ lastVarChange=ts; varTarget=(Math.random()*2)-1; }
+    varActual+=(varTarget-varActual)*0.0006;
+    var mult=1+varActual*RANGE;
+    var tSpeed=BASE_T_SPEED*mult;
+    applyBeat(mult);
+    pathT+=tSpeed;
+    pruneWaypoints();
+    var pos=pathPos(pathT);
+    var angle=pathAngle(pathT);
+    var delta=wrapAngle(angle-smoothedAngle);
+    smoothedAngle+=delta*0.08;
+    roamEl.style.left=pos.x+'px';
+    roamEl.style.top=pos.y+'px';
+    roamEl.style.transform='rotate('+(smoothedAngle*180/Math.PI+90)+'deg)';
+    roamRAF=requestAnimationFrame(step);
+  }
+
+  function start() {
+    roamEl=document.getElementById('roam-butterfly');
+    roamWingEls=[
+      document.querySelector('.roam-upperwing-left'),
+      document.querySelector('.roam-lowerwing-left'),
+      document.querySelector('.roam-upperwing-right'),
+      document.querySelector('.roam-lowerwing-right')
+    ];
+    // Reset state
+    waypoints=[{x:0.5,y:0.5}];
+    waypoints.push({x:0.5+rnd(-0.05,0.05),y:0.5-rnd(0.20,0.30)});
+    for(var i=0;i<8;i++){ var l=waypoints[waypoints.length-1]; waypoints.push(nextWaypoint(l.x,l.y)); }
+    pathT=0; varTarget=0; varActual=0; lastVarChange=0; lastAppliedRate=1.0;
+    smoothedAngle=pathAngle(0);
+    roamEl.style.display='block';
+    var s=pathPos(0);
+    roamEl.style.left=s.x+'px';
+    roamEl.style.top=s.y+'px';
+    roamEl.style.transform='rotate('+(smoothedAngle*180/Math.PI+90)+'deg)';
+    roamRAF=requestAnimationFrame(step);
+  }
+
+  function stop() {
+    if(roamRAF){ cancelAnimationFrame(roamRAF); roamRAF=null; }
+    if(roamEl) roamEl.style.display='none';
+  }
+
+  return { start: start, stop: stop };
+})();
+
+// ── Inactivity timer ───────────────────────────────────────────────────────────
+
+var INACTIVITY_MS = 45 * 60 * 1000;
+var inactivityTimer = null;
+var currentState = 'waking';
+
+function resetInactivityTimer() {
+  if (!sessionActive) return;
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(function() {
+    if (sessionActive) setButterfly('needs-you');
+  }, INACTIVITY_MS);
+}
+
+function clearInactivityTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = null;
+}
+
+// Resolve needs-you when Jeanette starts typing
+document.getElementById('input').addEventListener('input', function() {
+  if (currentState === 'needs-you') setButterfly('ready');
+});
+
+// ── Start on load — check for existing session first ───────────────────────
+(async function() {
+  try {
+    var statusResp = await fetch(SERVER + '/status');
+    var statusData = await statusResp.json();
+    if (statusData.session_active) {
+      // A session is already running — warn before overwriting it
+      var thread = document.getElementById('thread');
+      var warn = document.createElement('div');
+      warn.style.cssText = 'font-family:"Cormorant Garamond",serif;font-style:italic;font-size:16px;color:rgba(245,215,110,.7);text-align:center;padding:24px 20px;line-height:1.7;';
+      warn.innerHTML = 'a session is already open<br><span style="font-size:13px;color:rgba(245,215,110,.4);">closing this tab will not end it</span><br><br>' +
+        '<button onclick="startSession()" style="background:transparent;border:1px solid rgba(245,215,110,.3);border-radius:4px;color:rgba(245,215,110,.6);font-family:\'Cormorant Garamond\',serif;font-style:italic;font-size:15px;padding:10px 24px;cursor:pointer;">start a new session anyway</button>';
+      thread.appendChild(warn);
+      document.getElementById('slabel').textContent = '';
+    } else {
+      startSession();
+    }
+  } catch(e) {
+    startSession();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+    <key>Label</key>
+    <string>com.claudette.server</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/jeanettearthur/Claudette/start_claudette.sh</string>
+    </array>
+
+    <!-- Start automatically at login -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart automatically if it stops -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Log output here so you can see what's happening -->
+    <key>StandardOutPath</key>
+    <string>/Users/jeanettearthur/Claudette/claudette_server.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/jeanettearthur/Claudette/claudette_server_error.log</string>
+
+    <!-- Working directory — must be where your Claudette files live -->
+    <key>WorkingDirectory</key>
+    <string>/Users/jeanettearthur/Claudette</string>
+
+</dict>
+</plist>

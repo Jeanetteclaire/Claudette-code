@@ -1,0 +1,17 @@
+# Sensitive — never commit
+.env
+
+# macOS junk
+.DS_Store
+
+# Python cache
+__pycache__/
+
+# Logs — generated, change constantly
+*.log
+
+# Personal content — backed up via memory writer
+transcripts/
+
+# Out-of-date and contains credentials
+IMPORTANT DOCS/
