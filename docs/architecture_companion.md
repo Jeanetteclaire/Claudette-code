@@ -62,6 +62,34 @@ Local filesystem on the Mac. Two things server.py writes here directly: transcri
 
 ---
 
+## Launch chain — what starts everything
+
+Before any of the runtime flows below, server.py has to be running. That's what the launch chain handles.
+
+When you log into your Mac, macOS launches your user session ("Aqua" in launchctl terminology). At that point, launchctl reads every plist file in `~/Library/LaunchAgents/` and starts whatever's configured to run at login.
+
+The plist file `com.claudette.server.plist` is the configuration that tells launchctl how to start Claudette. It specifies:
+
+- The program to run (`start_claudette.sh`)
+- Where to redirect stdout (the path to `claudette_server.log`)
+- Where to redirect stderr (the path to `claudette_server_error.log`)
+- Whether to restart the program if it dies (`KeepAlive`)
+- Whether to start it immediately at login (`RunAtLoad`)
+
+Without the plist, launchctl wouldn't know server.py exists. The plist is the bridge.
+
+When launchctl starts the shell script, the script runs server.py. The shell script is the layer that sets `PYTHONUNBUFFERED=1` — the environment variable that ensures Python writes log lines immediately rather than buffering them. Without this, log files would lag by seconds or minutes, and the last few lines before a crash might never appear.
+
+server.py itself loads the `.env` file (API keys), starts the background threads (library loop, transcript flush), and binds to port 5001. From that point onward, the browser can connect.
+
+The diagram `launch_chain.svg` shows this flow visually with the annotations of what each layer adds to the environment.
+
+**Why this matters.** Most of the time, the launch chain is invisible. You log in, Claudette is running, you use her. But when something goes wrong with how she starts — fails to start, starts but doesn't accept connections, starts but logs nothing — the chain is where the fault has to be. Having the chain mapped means you can think systematically about where in those four layers the problem lies, instead of guessing.
+
+**Runtime requirement: Tailscale.** Claudette requires Tailscale to be running. If Tailscale is off, the interface shows a "server not running" banner regardless of whether server.py is actually running. The mechanism isn't fully understood — see *work_queue.md* under "Diagnose Tailscale dependency." Operationally: if you see the red banner, check Tailscale before anything else.
+
+---
+
 ## Flows — what happens in time
 
 ### Session start
@@ -92,7 +120,19 @@ What lives where, and what happens if it's lost.
 
 **In-memory in server.py:** session message history, library loop active flag, the transcript being built. Lost on server restart. The transcript is the only one that's also flushed to disk during a session, so a mid-session crash loses at most one minute of conversation. The session state is by design ephemeral — restarting server.py means any active session is over.
 
-**On the Mac's disk:** transcripts (one file per session date, in `transcripts/`), log files. Persistent until the disk dies. Backed up weekly via Time Machine to a 4TB external drive — that backup is the safety net against disk failure. Not in git (transcripts and logs are explicitly in `.gitignore`); git is for code, Time Machine is for personal content.
+**On the Mac's disk:** several distinct kinds of file with different purposes.
+
+*Transcripts* live in `~/Claudette/transcripts/` — one file per session date. Persistent until the disk dies. Backed up weekly via Time Machine to a 4TB external drive.
+
+*Log files* live in `~/Claudette/`:
+- `claudette_server.log` holds normal output (stdout) — every line server.py prints during normal operation. Session activity, retrieval results, library cycles, memory writer subprocess output, Flask request logs.
+- `claudette_server_error.log` holds errors (stderr) — tracebacks, warnings, anything Python reports as an error.
+
+Both log files grow without bound — there's no automatic rotation or truncation. Currently small but worth being aware of long-term. See *future_considerations.md* for the eventual log rotation question.
+
+*Configuration files* live in two places. `.env` lives in `~/Claudette/` and holds API keys and tokens (excluded from git via `.gitignore`). `com.claudette.server.plist` lives in `~/Library/LaunchAgents/` and tells launchctl how to run the server — see the next section.
+
+None of these are in git (transcripts, logs, and `.env` are excluded; the plist lives outside the Claudette folder). Git is for code; Time Machine is for personal content; the plist is system configuration that's stable across upgrades.
 
 **On GitHub (memory repository):** all of Claudette's persistent memory — facts, observations, threads, returning-to, library visits, signals. This is the canonical store of who she is across sessions. Versioned; every change is a commit and rollback is possible. Backed up implicitly by being on GitHub's servers.
 
@@ -103,6 +143,16 @@ What lives where, and what happens if it's lost.
 ## Failure modes — what to check first
 
 For each thing that can go wrong, what it looks like and where to look. This list will grow over time as we encounter new failure modes.
+
+**The log files are the primary diagnostic surface.** Almost every failure produces a log line somewhere, either in `claudette_server.log` (normal output) or `claudette_server_error.log` (errors and tracebacks — though see below). For most problems, the first move is `tail -100 ~/Claudette/claudette_server.log` to see recent activity, or `tail -100 ~/Claudette/claudette_server_error.log` if something has crashed.
+
+A quirk worth knowing: Flask sends its routine request log lines to stderr by default, so `claudette_server_error.log` contains a lot of `200 OK` entries alongside actual errors. To find genuine errors, grep for tracebacks: `grep -A 10 "Traceback" ~/Claudette/claudette_server_error.log` shows any traceback found plus the next ten lines. This is on the list to fix — see *future_considerations.md*.
+
+For live diagnosis during an active problem, `tail -f` follows the file as new lines appear. Combined with `grep` to filter for specific terms (e.g., `tail -1000 ~/Claudette/claudette_server.log | grep memory_writer`), you can quickly isolate the relevant activity.
+
+A historical note worth knowing: log files only work as a diagnostic surface because two things are configured correctly. The plist redirects stdout and stderr to those file paths, and `PYTHONUNBUFFERED=1` is set in the shell script. If either is missing, the log files either don't get written at all, or lag so badly they aren't useful for live diagnosis. Tuesday morning's debugging spent significant time figuring out that the logs weren't being written before any actual diagnostic work could begin. Both are now in place; if a future change disrupts either, observability disappears.
+
+---
 
 **Memory writer hangs or times out.** The session ends but no commit appears in the memory repo. Check `claudette_server.log` for `[memory_writer]` lines — the writer logs each step. If it's not appearing at all, the spawn failed; if it appears and stops, the writer is running but stuck. Check the timeout value in `server.py` (currently 1800 seconds — 30 minutes — as of 2026-04-29). If a session is unusually large, the writer may take longer; the timeout is the upper bound.
 

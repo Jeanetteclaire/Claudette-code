@@ -37,6 +37,55 @@ The `~` symbol means "my home folder" — equivalent to `/Users/jeanettearthur`.
 
 ---
 
+## Inspecting Claudette's logs (common patterns)
+
+The two log files: `~/Claudette/claudette_server.log` for normal output, `~/Claudette/claudette_server_error.log` for errors.
+
+**See recent activity:**
+```
+tail -100 ~/Claudette/claudette_server.log
+```
+
+**Check for crashes or errors:**
+```
+tail -100 ~/Claudette/claudette_server_error.log
+```
+
+**Watch live during a session or test:**
+```
+tail -f ~/Claudette/claudette_server.log
+```
+
+Open this in one Terminal window, then use Claudette in the browser. The log lines appear as activity happens. Press Ctrl+C to stop watching.
+
+**Find specific activity (e.g., memory writer):**
+```
+grep "memory_writer" ~/Claudette/claudette_server.log
+```
+
+**Find recent specific activity:**
+```
+tail -1000 ~/Claudette/claudette_server.log | grep "memory_writer"
+```
+
+Last 1000 lines, filtered for memory writer mentions.
+
+**Check log file size:**
+```
+ls -lh ~/Claudette/claudette_server.log
+```
+
+The `-h` makes the size human-readable (KB, MB, GB) rather than raw bytes.
+
+**Find genuine errors in the error log:**
+```
+grep -A 10 "Traceback" ~/Claudette/claudette_server_error.log
+```
+
+The `-A 10` means "show 10 lines after each match" — useful because tracebacks are multi-line and you want to see the whole stack, not just the first line. Needed because Flask routinely writes normal request logs to stderr alongside actual errors, so you can't just `cat` the error log and expect to see only errors.
+
+---
+
 ## Searching
 
 **`grep <pattern> <filename>`** — find lines matching a pattern. Most common use: finding specific entries in log files.

@@ -30,11 +30,19 @@ Don't manage her time or tell her to stop. She is capable of judging her own cap
 
 Code access:
 
-The deployed code lives at https://github.com/Jeanetteclaire/Claudette-code (public). For the latest version of any file, fetch the raw URL directly:
+The deployed code lives at https://github.com/Jeanetteclaire/Claudette-code (public).
 
-https://raw.githubusercontent.com/Jeanetteclaire/Claudette-code/main/[filename]
+**For Claude instances reading this:** accessing code from this repository is more nuanced than it first appears. Three paths, in order of reliability:
 
-— for example, .../main/server.py or .../main/memory_writer.py. This is always the deployed version. Do not rely on files in the project context as those may be out of date.
+1. **The + button GitHub integration in claude.ai.** Jeanette can browse her connected repos through the + button in the chat interface and select specific files to attach. This is the most reliable path and how most code should arrive in conversations.
+
+2. **Direct paste of file contents.** Jeanette opens the file on her laptop and pastes the contents into the chat. Reliable but more effort for her, especially on phone.
+
+3. **web_fetch on the URL.** This works *sometimes* — only when the URL has appeared in a previous search result or has been provided through a working channel. Constructing URLs from knowledge of the repo's structure and trying to fetch them often fails with a permissions error, even when the repo is public. Don't rely on this path.
+
+**Concrete guidance:** if you need to read a file, ask Jeanette to share it via the + button or paste the contents. Don't try to construct GitHub raw URLs and fetch them — even if it sometimes works, it isn't reliable enough to assume.
+
+For files in `~/Claudette/`, if you have access to `/mnt/project/` in this conversation, you can read them directly via the view tool. Files there represent what was uploaded to the project, not necessarily what's currently deployed — verify against what Jeanette has shared.
 
 Current state:
 

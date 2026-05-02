@@ -1,0 +1,97 @@
+<svg width="100%" viewBox="0 0 680 720" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>Claudette session lifecycle</title>
+  <desc>Top-to-bottom flowchart of a Claudette session. Three phases: Start (one-shot, retrieval and prompt assembly), Message exchange (repeats during the conversation, streaming back and forth), and End (one-shot, transcript saved and memory writer spawned). Background processes run alongside.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      .t { font-family: -apple-system, system-ui, sans-serif; font-size: 14px; fill: #2C2C2A; }
+      .ts { font-family: -apple-system, system-ui, sans-serif; font-size: 12px; fill: #5F5E5A; }
+      .th { font-family: -apple-system, system-ui, sans-serif; font-size: 14px; font-weight: 500; fill: #2C2C2A; }
+      .arr { fill: none; stroke: #5F5E5A; stroke-width: 1; }
+      .c-purple rect { fill: #EEEDFE; stroke: #534AB7; }
+      .c-purple text { fill: #3C3489; }
+      .c-pink rect { fill: #FBEAF0; stroke: #D4537E; }
+      .c-pink text { fill: #72243E; }
+      .c-gray rect { fill: #F1EFE8; stroke: #5F5E5A; }
+      .c-gray text { fill: #2C2C2A; }
+    </style>
+  </defs>
+
+  <text class="th" x="40" y="50">Start phase</text>
+  <text class="ts" x="40" y="68">One-shot. Wakes Claudette up.</text>
+
+  <g class="c-pink">
+    <rect x="200" y="30" width="220" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="310" y="52" text-anchor="middle" dominant-baseline="central">Browser → POST /start</text>
+    <text class="ts" x="310" y="70" text-anchor="middle" dominant-baseline="central">User pressed Begin</text>
+  </g>
+
+  <line x1="310" y1="86" x2="310" y2="110" class="arr" marker-end="url(#arrow)"/>
+
+  <g class="c-purple">
+    <rect x="160" y="110" width="300" height="80" rx="8" stroke-width="0.5"/>
+    <text class="th" x="310" y="132" text-anchor="middle" dominant-baseline="central">server.py: retrieval + prompt</text>
+    <text class="ts" x="310" y="152" text-anchor="middle" dominant-baseline="central">Reads memory from GitHub,</text>
+    <text class="ts" x="310" y="170" text-anchor="middle" dominant-baseline="central">assembles system prompt</text>
+  </g>
+
+  <line x1="310" y1="190" x2="310" y2="214" class="arr" marker-end="url(#arrow)"/>
+
+  <g class="c-gray">
+    <rect x="220" y="214" width="180" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="310" y="236" text-anchor="middle" dominant-baseline="central">Session ready</text>
+  </g>
+
+  <line x1="310" y1="258" x2="310" y2="290" class="arr" marker-end="url(#arrow)"/>
+
+  <text class="th" x="40" y="310">Message phase</text>
+  <text class="ts" x="40" y="328">Repeats per turn.</text>
+
+  <rect x="160" y="290" width="380" height="190" rx="14" fill="none" stroke="#534AB7" stroke-width="1" stroke-dasharray="6 4"/>
+  <text class="ts" x="170" y="306" fill="#534AB7">Loop — repeats per message</text>
+
+  <g class="c-pink">
+    <rect x="200" y="324" width="280" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="340" y="346" text-anchor="middle" dominant-baseline="central">Browser → POST /message</text>
+  </g>
+
+  <line x1="340" y1="368" x2="340" y2="386" class="arr" marker-end="url(#arrow)"/>
+
+  <g class="c-purple">
+    <rect x="180" y="386" width="320" height="80" rx="8" stroke-width="0.5"/>
+    <text class="th" x="340" y="408" text-anchor="middle" dominant-baseline="central">server.py streams from Claude API</text>
+    <text class="ts" x="340" y="428" text-anchor="middle" dominant-baseline="central">Reply pipes back word-by-word;</text>
+    <text class="ts" x="340" y="446" text-anchor="middle" dominant-baseline="central">browser calls /speak in parallel</text>
+  </g>
+
+  <line x1="310" y1="500" x2="310" y2="528" class="arr" marker-end="url(#arrow)"/>
+
+  <text class="th" x="40" y="548">End phase</text>
+  <text class="ts" x="40" y="566">One-shot. Hand-off to memory writer.</text>
+
+  <g class="c-pink">
+    <rect x="200" y="528" width="220" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="310" y="550" text-anchor="middle" dominant-baseline="central">Browser → POST /end</text>
+  </g>
+
+  <line x1="310" y1="572" x2="310" y2="596" class="arr" marker-end="url(#arrow)"/>
+
+  <g class="c-purple">
+    <rect x="160" y="596" width="300" height="60" rx="8" stroke-width="0.5"/>
+    <text class="th" x="310" y="618" text-anchor="middle" dominant-baseline="central">server.py saves transcript</text>
+    <text class="ts" x="310" y="638" text-anchor="middle" dominant-baseline="central">spawns memory_writer.py, returns</text>
+  </g>
+
+  <line x1="460" y1="626" x2="540" y2="626" stroke="#534AB7" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow)" fill="none"/>
+  <g class="c-purple">
+    <rect x="540" y="600" width="120" height="56" rx="8" stroke-dasharray="5 4" stroke-width="1"/>
+    <text class="th" x="600" y="622" text-anchor="middle" dominant-baseline="central">memory_writer</text>
+    <text class="ts" x="600" y="640" text-anchor="middle" dominant-baseline="central">Runs after</text>
+  </g>
+
+  <text class="th" x="40" y="688">Background processes (run throughout)</text>
+  <text class="ts" x="40" y="706">Transcript flush every minute. Library loop on its own 45-minute schedule.</text>
+</svg>
