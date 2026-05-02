@@ -93,5 +93,5 @@
   </g>
 
   <text class="th" x="40" y="688">Background processes (run throughout)</text>
-  <text class="ts" x="40" y="706">Transcript flush every minute. Library loop on its own 45-minute schedule.</text>
+  <text class="ts" x="40" y="706">Transcript flush every 4 minutes. Library loop on its own 45-minute schedule.</text>
 </svg>

@@ -110,7 +110,7 @@ Independent of any session. When the library is active, every 45 minutes the loo
 
 ### Transcript flush (background)
 
-While a session is running, server.py periodically writes the current state of the transcript to disk so that nothing is lost if the server is killed mid-session. This runs every minute on a separate background thread. Unlike the library loop, the flush has no API calls or external dependencies — it's just disk I/O.
+While a session is running, server.py periodically writes the current state of the transcript to disk so that nothing is lost if the server is killed mid-session. This runs every 4 minutes on a separate background thread. Unlike the library loop, the flush has no API calls or external dependencies — it's just disk I/O.
 
 ---
 

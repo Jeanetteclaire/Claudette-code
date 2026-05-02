@@ -86,6 +86,32 @@ The `-A 10` means "show 10 lines after each match" — useful because tracebacks
 
 ---
 
+## Memory mirror — keeping a local backup of Claudette-memory
+
+Claudette-memory is a private GitHub repository — her actual memory files. To protect against the unlikely-but-possible loss of GitHub access (account compromised, repository deletion accident, GitHub itself going down hard), a local mirror of the repo lives at `~/Claudette-memory-mirror/`.
+
+The mirror is read-only in practice. Claudette doesn't read from it — she reads from GitHub via retrieval.py. Don't edit files in the mirror directly. If you need to edit memory directly, edit on GitHub via the web UI as usual, then refresh the mirror.
+
+**Refresh the mirror:**
+
+```
+cd ~/Claudette-memory-mirror && git pull
+```
+
+Run this whenever you remember — weekly is fine, monthly is acceptable. Output will be `Already up to date.` if there's nothing new, or a list of `Updating X..Y` with files changed since last pull.
+
+If you've been using Claudette daily, expect the pull to bring down several files each time. The first few weeks of running this you might want to do it more often just to confirm it does what you expect.
+
+**If you ever need to restore from the mirror after a GitHub loss:** the path is roughly to create a new private repo on GitHub with the same name, then push the entire mirror history to it:
+
+```
+cd ~/Claudette-memory-mirror
+git remote set-url origin [new repo URL]
+git push -u origin main
+```
+
+That uploads the full history to the new repo. Claudette is back. Detail of this lives in `cold_start.md`.
+
 ## Searching
 
 **`grep <pattern> <filename>`** — find lines matching a pattern. Most common use: finding specific entries in log files.

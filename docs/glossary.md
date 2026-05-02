@@ -36,7 +36,7 @@ Add new entries when a term comes up that isn't here yet. Alphabetical for fast 
 
 **Flask.** A small Python web framework. The plumbing that lets server.py listen for HTTP requests, match URLs to functions, and send responses back. Chosen for Claudette because it's Python (matching the rest of the codebase), small (right-sized for a single-user local server), and widely supported.
 
-**Flush (transcript).** Writing the in-memory state to disk so it's preserved if the program crashes. Claudette's transcript flush runs every minute during a session — the in-memory transcript gets written to a file in `~/Claudette/transcripts/`, so a server crash loses at most one minute of conversation rather than the whole session.
+**Flush (transcript).** Writing the in-memory state to disk so it's preserved if the program crashes. Claudette's transcript flush runs every 4 minutes during a session — the in-memory transcript gets written to a file in `~/Claudette/transcripts/`, so a server crash loses at most 4 minutes of conversation rather than the whole session.
 
 **Framework.** A library of pre-written code that handles common patterns so you can focus on application-specific logic. Flask is a web framework. Frameworks are usually opinionated about how things should be structured, which is mostly helpful — they make sensible defaults available without you having to invent them.
 
