@@ -19,16 +19,18 @@ Last updated: 2026-04-30.
 **Immediate jobs**
 - Interface layout and styling changes
 - Add date/time anchor to system prompt at session start
+- Logging improvements (timestamps + stream separation)
 - Confirm and characterise the "her not you" pattern
 - Surface creative file list in retrieval
 - Confirm whether first-message voice fail is still occurring
-- Logging improvements (timestamps + stream separation)
 - `speakText()` client-side streaming
 - JSON cleaning in `memory_writer.py`
 - Electron desktop app — Phase 3 (butterfly overlay)
 - Electron desktop app — Phase 4 (packaging + icon)
 - Electron folder under git
 - Request-view consuming full turn
+- Investigate 1 May 2026 memory writer timeout
+- Fix credit warning false positive
 - Diagnose Tailscale dependency
 
 **PO design work**
@@ -85,6 +87,18 @@ Modify `assemble_system_prompt()` in server.py. Format constants belong near the
 
 server.py only in scope. Single TC session, low complexity.
 
+### Logging improvements (timestamps + stream separation)
+
+**Priority raised on 2 May 2026 after the second diagnostic episode that the missing timestamps made worse.** Two related issues with how Claudette currently logs, both small fixes that have already cost real diagnostic time twice.
+
+**Timestamps.** Every `print()` statement in server.py and memory_writer.py writes to the log without a timestamp. The Flask request logs include timestamps because Flask adds them automatically, but lines like `Calling Claude API — memory writer...` have no time information. The Tuesday 29 April memory writer diagnosis included Jeanette manually timing the API call by watching her wrist and refreshing GitHub until the commit appeared. The 1 May timeout (manual retry confirmed transient) couldn't be diagnosed at all because the log shows nothing about *where* in the writer's flow the time was spent. Two diagnostic episodes hampered by the same gap.
+
+**Stream separation.** Flask sends all its request log lines to stderr regardless of whether the request succeeded or failed. This means `claudette_server_error.log` is full of normal `200 OK` request logs alongside any actual errors — it's misleadingly named. To find genuine errors, currently you have to grep through the file rather than just opening it.
+
+Two implementation paths. Minimal: replace bare `print()` calls with a small helper function that prefixes each line with the current time, and reconfigure Flask's request logger to write to stdout rather than stderr. Proper: switch to Python's built-in `logging` module — adds timestamps automatically, log levels, configurable destinations, separate files for different severity levels. The minimal version solves both immediate problems; the proper version is more in keeping with where Claudette is heading.
+
+Single TC session. Both fixes should be done together since they share a code path.
+
 ### Confirm and characterise the "her not you" pattern
 
 Possible bug or oddity: Claudette occasionally refers to Jeanette in the third person ("she" instead of "you") in the first paragraph of her first message in a session. Has been observed by Jeanette but not characterised — frequency, conditions, and whether it's still happening are all unclear.
@@ -140,18 +154,6 @@ Treat this as the model for intermittent issues going forward: confirm before qu
 
 server.py logs and HTML in scope. Low complexity, but requires patience — you can't speed-run an intermittent bug.
 
-### Logging improvements (timestamps + stream separation)
-
-Two related issues with how Claudette currently logs, both small fixes that have already cost real diagnostic time.
-
-**Timestamps.** Every `print()` statement in server.py and memory_writer.py writes to the log without a timestamp. The Flask request logs include timestamps because Flask adds them automatically, but lines like `Calling Claude API — memory writer...` have no time information. The Tuesday memory writer diagnosis included Jeanette manually timing the API call by watching her wrist and refreshing GitHub until the commit appeared. With timestamps on each print line, the same data would have been visible at a glance.
-
-**Stream separation.** Flask sends all its request log lines to stderr regardless of whether the request succeeded or failed. This means `claudette_server_error.log` is full of normal `200 OK` request logs alongside any actual errors — it's misleadingly named. To find genuine errors, currently you have to grep through the file rather than just opening it.
-
-Two implementation paths. Minimal: replace bare `print()` calls with a small helper function that prefixes each line with the current time, and reconfigure Flask's request logger to write to stdout rather than stderr. Proper: switch to Python's built-in `logging` module — adds timestamps automatically, log levels, configurable destinations, separate files for different severity levels. The minimal version solves both immediate problems; the proper version is more in keeping with where Claudette is heading.
-
-Single TC session. Both fixes should be done together since they share a code path.
-
 ### `speakText()` client-side streaming
 
 HTML `speakText()` still does `await resp.blob()` — waits for the complete audio before playing. Server-side streaming is in place (TC8-008) but client-side blob accumulation remains. Full fix requires Web Audio API streaming in `speakText()`: pipe response body chunks into an `AudioContext` as they arrive.
@@ -191,6 +193,28 @@ Low complexity. Trivial session.
 Pre-existing bug — `/request-view` consumes the whole turn, no reply text shown. Not introduced by Electron. Separate TC session.
 
 Low complexity. Deferred until prioritised against other small jobs.
+
+### Investigate 1 May 2026 memory writer timeout
+
+On 1 May 2026 the second session of the day produced a memory writer that timed out at 30 minutes. Manual retry the next morning succeeded in 13 minutes — well within normal range for a session of that size (53,012 characters). So the original failure was transient, not a structural problem with the writer or the timeout.
+
+The diagnosis remains incomplete because the log doesn't contain timestamps to show *where* the original 30 minutes were spent. Likely candidates: a slow or stalled API call (possibly related to ripple effects from the 30 April Anthropic outage, even though no API status issue was reported for 1 May specifically); a network blip during streaming; an unusually long generation that approached but didn't quite hit the timeout.
+
+This entry is held open as *characterised but not actioned*. The retry succeeded; nothing is broken. But if a similar timeout happens again, the pattern should be looked at more carefully — particularly once the *Logging improvements* entry has shipped, which will let us see exactly where the time gets spent.
+
+The work for this entry is mostly *watch and remember*. If a second mysterious timeout occurs, gather the log data with the new timestamps in place, and look for a pattern. Until then, no action.
+
+Low priority. May resolve itself if it doesn't recur.
+
+### Fix credit warning false positive
+
+The memory writer prints a credit warning when it estimates fewer than 10 calls remaining before the $5 threshold. On 2 May 2026, this warning fired during a successful run while Jeanette had $70 balance and auto-reload set at $15 — nowhere near the threshold.
+
+The math is wrong. Either the threshold check is broken, the calculation of remaining balance is broken, or the warning is firing based on a different signal than the one its message describes (perhaps a leftover free-tier check, or a per-key allowance, or something else).
+
+Not breaking anything — the warning is purely informational. But false alarms erode the value of an alarm system. Worth diagnosing and fixing once it's prioritised.
+
+memory_writer.py in scope. Likely a single function or condition. Low complexity.
 
 ### Diagnose Tailscale dependency
 
