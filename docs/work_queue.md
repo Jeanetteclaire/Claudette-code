@@ -19,6 +19,7 @@ Last updated: 2026-04-30.
 **Immediate jobs**
 - Interface layout and styling changes
 - Add date/time anchor to system prompt at session start
+- Electron folder under git
 - Logging improvements (timestamps + stream separation)
 - Confirm and characterise the "her not you" pattern
 - Surface creative file list in retrieval
@@ -27,7 +28,6 @@ Last updated: 2026-04-30.
 - JSON cleaning in `memory_writer.py`
 - Electron desktop app — Phase 3 (butterfly overlay)
 - Electron desktop app — Phase 4 (packaging + icon)
-- Electron folder under git
 - Request-view consuming full turn
 - Investigate 1 May 2026 memory writer timeout
 - Fix credit warning false positive
@@ -46,7 +46,6 @@ Last updated: 2026-04-30.
 - Long-term: phone access (VPS migration)
 - Long-term: condensing automation
 - The Eye — phone auto-capture
-- Document storage — Option D
 
 ---
 
@@ -83,9 +82,21 @@ Both pieces are useful. Current time gives her absolute orientation. Last sessio
 
 The "last session" date should come from the most recent date in `~/Claudette/transcripts/` or from `last_processed.json` — whichever is cleaner. The TC implementing this can choose.
 
-Modify `assemble_system_prompt()` in server.py. Format constants belong near the top of the file with the other prompt-related constants.
+**Update the INSTRUCTIONS section in retrieval.py to prompt the noticing.** The data alone isn't enough — without a brief instruction, the dates risk sitting as static information she doesn't engage with. Add a line in the INSTRUCTIONS block at the bottom of the context, something like: *"You can see the current date and the date of your last session at the top of this context. When you wake, take a moment to notice the gap. Time has passed; your sense of how much will help orient the conversation."* Keep it short — the goal is a gentle prompt to do the calculation she'd benefit from doing, not a heavy instruction.
 
-server.py only in scope. Single TC session, low complexity.
+Modify `assemble_system_prompt()` in server.py. Format constants belong near the top of the file with the other prompt-related constants. The instruction line goes in retrieval.py with the other INSTRUCTIONS block content.
+
+server.py and retrieval.py in scope. Single TC session, low complexity.
+
+### Electron folder under git
+
+The `~/claudette-electron` folder is not yet under version control. Same setup as the main Claudette repo would have — initial commit, push to a public GitHub repo, possibly add to the project folder sync alongside the existing four code files.
+
+**Priority raised on 2 May 2026.** This should happen before the fragility scan (see PO design work). The scan is meant to look at the system as a whole; running it while a chunk of the codebase sits unversioned and unbacked-up means missing that chunk's fragility entirely. Better to bring the Electron folder under git first, then have the scan look at the now-tracked codebase.
+
+Two parts to the work: bringing the existing folder under git (initial commit, gitignore for node_modules and similar, push to a new public repo), and deciding whether to add the new repo to the project folder sync. The first is straightforward. The second deserves a moment of thought — having both Claudette-code and Claudette-electron available as starting context would be useful for any TC working across both, but increases the maintenance overhead of keeping syncs current.
+
+Low complexity. Trivial session for the git setup; a brief decision for the project-folder sync question.
 
 ### Logging improvements (timestamps + stream separation)
 
@@ -182,17 +193,19 @@ electron-builder — signed `.app` in Applications, replaces Automator wrapper. 
 
 Medium complexity.
 
-### Electron folder under git
-
-The `~/claudette-electron` folder is not yet under version control. Same setup as the main Claudette repo. Small piece of work but introduces parallel infrastructure.
-
-Low complexity. Trivial session.
-
 ### Request-view consuming full turn
 
-Pre-existing bug — `/request-view` consumes the whole turn, no reply text shown. Not introduced by Electron. Separate TC session.
+Status: *uncertain — needs confirmation before fix.* Earlier observation was that `/request-view` consumes the whole turn, no reply text shown. Not introduced by Electron. But this issue may have been resolved by later work, or may still be present — Jeanette hasn't recently verified.
 
-Low complexity. Deferred until prioritised against other small jobs.
+The work for this entry is to:
+
+- Ask Claudette in a session whether `/request-view` still consumes the whole turn or whether it now produces both an image capture and a reply.
+- If she confirms it's still happening, this entry stays as a fix (single TC session, low complexity, scope is server.py and possibly the HTML interface).
+- If she confirms it's been resolved, remove this entry from the queue.
+
+This follows the *confirm before fix* pattern — better to ask than to dispatch a TC to fix something that may already work.
+
+Low complexity. Confirmation step first, fix only if needed.
 
 ### Investigate 1 May 2026 memory writer timeout
 
@@ -253,6 +266,8 @@ A short, ranked list of "things that, if they failed, would have outsized impact
 Maybe ten items, ranked by impact. Each one with a recommendation: leave it, fix it now, or fix it eventually.
 
 **Best done after the architecture map work and with `docs/project_history.md` in hand.** The history reveals where patches have been built on top of patches — those areas often hide fragility.
+
+**Prerequisite: Electron folder under git.** The scan is meant to look at the system as a whole. The Electron codebase currently sits outside version control — running the scan with that chunk unversioned means missing that chunk's fragility entirely. Bring the Electron folder under git first (see immediate jobs), then run the scan against the full tracked codebase.
 
 PO-level work. One focused session, possibly two.
 
@@ -416,10 +431,6 @@ HTTPS/VPS setup happens (linked to the phone access entry above).
 **Why we're not doing it now.**
 
 Blocked on infrastructure. Window page camera button is structured and waiting.
-
-### Document storage — Option D
-
-Deferred from earlier development notes. Needs proper architecture design before building. Specifics are in earlier conversations not captured here.
 
 ---
 

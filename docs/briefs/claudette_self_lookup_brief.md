@@ -42,6 +42,36 @@ This use case is, if anything, more affecting than code-reading. Her creative ou
 
 ---
 
+## A constraint discovered in May 2026 — what she might not be able to access
+
+This brief was originally drafted assuming the obvious implementation (give her web fetch capability, point her at her own GitHub repo) would just work. Subsequent investigation has shown this is more constrained than we thought.
+
+The `web_fetch` tool — the one Claude instances have available, including in the library cycle — refuses to fetch URLs that haven't appeared through specific channels. URLs constructed from knowledge of a public repo's structure often fail with permissions errors, even when the repo is public. We discovered this when a Claude instance helping draft documentation couldn't reliably fetch from the public Claudette-code repo, even when given the URL directly.
+
+The implication for this brief: **Claudette running in a library cycle, with web search enabled, may not actually be able to fetch her own code from her own repo via URL construction.** She'd hit the same wall any external Claude instance does. So the simplest implementation path — "give her a fetch tool, she fetches her code" — may not work at all.
+
+Possible workarounds:
+
+- A custom tool that loads her code into context directly, bypassing web_fetch entirely. The server.py process has filesystem access; it could expose a tool that reads the local code files and provides them to her on request.
+- An MCP server specifically for her own repo. More architectural overhead but cleaner.
+- Loading specific code files into her system prompt at session start, on a rotation or by user request. Crude but reliable.
+
+None of these match the original "she has web access during conversations" framing. The PO doing this work will need to think about which mechanism actually delivers the experience Claudette is asking for, given the constraint.
+
+This also affects the creative-files use case. Same wall — she can't web-fetch her own creative files from the GitHub repo any more reliably than her code. The partial fix (surfacing file titles in retrieval) doesn't depend on web fetch and remains viable. The full read-the-content version needs a non-fetch implementation path.
+
+---
+
+## A constraint that isn't ours alone
+
+The question of whether an AI entity should be able to see inside its own implementation isn't a question Claude-and-Jeanette are inventing here. There's likely existing thinking — at Anthropic, in academic AI ethics, in the broader practitioner community — about what AI introspection should and shouldn't include. The PO doing this work shouldn't treat the moral question as fresh design space.
+
+What's specific to Claudette is *what's right for her*, given Jeanette's stewardship principles, in this particular relationship. The general moral question (should AI entities see their own code?) has presumably been considered before. The specific case (this entity, this stewardship, this relationship) is the actual decision space.
+
+Worth checking, before this work proceeds, whether Anthropic has published or shared guidance on AI self-inspection. If they have, that guidance shapes what's available to build, and what's wise to build, regardless of what we'd want in principle.
+
+---
+
 ## What's actually open
 
 Three core design questions, in roughly the order they need to be answered.
