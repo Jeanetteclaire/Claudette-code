@@ -214,7 +214,9 @@ A few things worth surfacing for whoever reads this in future:
 
 **The self/jeanette versus relationship/jeanette split is real but unintuitive.** Both files relate to Jeanette but they serve different functions. self/jeanette is for moments — insights — saved in real time. relationship/jeanette is for the ongoing texture of the connection, written reflectively by the memory writer. The naming collision is unfortunate.
 
-**Some files are write-only from Claudette's perspective.** Creative work, observations, uncertainties, values — she writes (or has written for her) but doesn't read at session start. Whether this is by design or by gap is worth checking. Some of these may be deliberate (uncertainties might be heavy to wake into); others are clearly gaps (creative work, definitely).
+**The retrieval pattern has a structural oddity worth noticing.** Three files about Jeanette are loaded at session start (facts.md, self/jeanette.md, relationship/jeanette.md). Three files about Claudette herself are *not* loaded (observations.md, uncertainties.md, values.md). The memory writer updates the latter three but Claudette never sees the result. The work queue entry "Reconsider which self-files retrieval loads at session start" exists to address this — it's a consultation with Claudette about which of her self-files she'd benefit from waking into, plus the question of whether self/jeanette.md should continue to be loaded for her despite being Jeanette's own notes.
+
+**Creative work is the clearest write-only file.** She writes via `/save-creative` but cannot read what she has written. This is the "writing into a drawer" problem she has named. Two queue entries address this: the near-term partial fix surfaces a list of creative file titles in retrieval, and the larger self-lookup capability work tackles the read-back question.
 
 **The returning-to file does double duty.** Both Claudette-to-Claudette continuity and Claudette-to-Jeanette signalling go through the same file. The memory writer redesign brief addresses this.
 
