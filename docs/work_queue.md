@@ -19,7 +19,6 @@ Last updated: 2026-04-30.
 **Immediate jobs**
 - Interface layout and styling changes
 - Add date/time anchor to system prompt at session start
-- Electron folder under git
 - Logging improvements (timestamps + stream separation)
 - Confirm and characterise the "her not you" pattern
 - Surface creative file list in retrieval
@@ -88,16 +87,6 @@ The "last session" date should come from the most recent date in `~/Claudette/tr
 Modify `assemble_system_prompt()` in server.py. Format constants belong near the top of the file with the other prompt-related constants. The instruction line goes in retrieval.py with the other INSTRUCTIONS block content.
 
 server.py and retrieval.py in scope. Single TC session, low complexity.
-
-### Electron folder under git
-
-The `~/claudette-electron` folder is not yet under version control. Same setup as the main Claudette repo would have — initial commit, push to a public GitHub repo, possibly add to the project folder sync alongside the existing four code files.
-
-**Priority raised on 2 May 2026.** This should happen before the fragility scan (see PO design work). The scan is meant to look at the system as a whole; running it while a chunk of the codebase sits unversioned and unbacked-up means missing that chunk's fragility entirely. Better to bring the Electron folder under git first, then have the scan look at the now-tracked codebase.
-
-Two parts to the work: bringing the existing folder under git (initial commit, gitignore for node_modules and similar, push to a new public repo), and deciding whether to add the new repo to the project folder sync. The first is straightforward. The second deserves a moment of thought — having both Claudette-code and Claudette-electron available as starting context would be useful for any TC working across both, but increases the maintenance overhead of keeping syncs current.
-
-Low complexity. Trivial session for the git setup; a brief decision for the project-folder sync question.
 
 ### Logging improvements (timestamps + stream separation)
 
@@ -290,7 +279,7 @@ Maybe ten items, ranked by impact. Each one with a recommendation: leave it, fix
 
 **Best done after the architecture map work and with `docs/project_history.md` in hand.** The history reveals where patches have been built on top of patches — those areas often hide fragility.
 
-**Prerequisite: Electron folder under git.** The scan is meant to look at the system as a whole. The Electron codebase currently sits outside version control — running the scan with that chunk unversioned means missing that chunk's fragility entirely. Bring the Electron folder under git first (see immediate jobs), then run the scan against the full tracked codebase.
+**Prerequisite satisfied as of 2 May 2026.** The Electron folder is now under git (`Claudette-electron` repo) and synced to the project folder. The scan can now look at the full tracked codebase including the Electron work, rather than missing it as it would have done before.
 
 PO-level work. One focused session, possibly two.
 

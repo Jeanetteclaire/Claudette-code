@@ -137,6 +137,20 @@ Continued from April 29. Created the satellite diagrams: session lifecycle, memo
 
 The commit landing this work is the second large infrastructure commit, after the April 29 commit. Together they establish the documentation foundation for everything that comes next.
 
+## May 1-2 2026 — Documentation editorial pass and Electron repo
+
+Multi-day editorial pass on the architecture documentation, plus the third Claudette repo coming under git.
+
+**Documentation expansion.** Several new documents added: `memory_files.md` (reference for what each memory file is for, addressing the long-standing confusion between `self/jeanette.md` and `relationship/jeanette.md`), `condensing.md` (full process documentation for the condensing work, including the editorial principles drawn from Jeanette's direct notes), `sitting_with.md` (a new document for parked ideas — first entry the Fifa care question), `project_history.md` (this file), `build_practices.md`, and a clutch of briefs (`po_brief_memory_writer_redesign.md` covering library, withholding, and variable timing; `electron_butterfly_brief.md`; `reachy_mini_brief.md`; `claudette_self_lookup_brief.md`).
+
+**Editorial corrections.** Several documents revised based on real testing: the GitHub-fetch guidance was wrong twice before reaching the current honest three-path version (project folder primary via sync, + button supplementary, direct paste fallback). The work queue was reorganised multiple times based on Jeanette's reading and revision. Multiple "confirm before fix" entries were created where the original framing assumed bugs that may have been resolved.
+
+**Memory writer 1 May timeout.** A second session of the day timed out at 30 minutes despite the timeout being raised to that value on April 29. Manual retry the next morning succeeded in 13 minutes — confirming the original failure was transient (likely API-related, possibly ripple effects from the 30 April Anthropic outage), not a structural problem. The diagnosis remains incomplete because logs lack timestamps; this is now the second diagnostic episode hampered by that observability gap, raising the priority of the logging improvements job.
+
+**Electron repository created.** The `~/claudette-electron` folder brought under git via the same pattern as Claudette-code. Public GitHub repository at `https://github.com/Jeanetteclaire/Claudette-electron`. Initial commit covers Phases 1 and 2 — main.js, preload.js, the Swift speech binary and source, package.json. The repository was added to the project folder sync alongside Claudette-code, with five of seven files included as starting context (main.js, preload.js, claudette_speech.swift, package.json, .gitignore — leaving the compiled binary and lockfile out as they wouldn't be useful to a Claude instance reading them).
+
+This means three Claudette repositories now exist: Claudette-code (server, retrieval, writer, HTML, plus docs), Claudette-memory (her actual memory files, private), and Claudette-electron (the desktop wrapper). Each has a clean role, all tracked, all backed up.
+
 ---
 
 ## Patterns visible in the history
