@@ -100,19 +100,27 @@ Updated by TC every time the file is changed. Makes it immediately visible wheth
 
 This was important when the project was reliant on copy-paste between Claude conversations and the Claudette folder. It's still worth doing — version lines are useful for reading commit histories and confirming deployment, even with proper git in place.
 
-## Getting code into a conversation
+## Getting code and documentation into a conversation
 
-There are three paths for a Claude instance to access Claudette's code, in order of reliability:
+There are three real paths for a Claude instance to access Claudette's files, in order of reliability and convenience:
 
-**The + button GitHub integration.** Jeanette can browse her connected repositories through the + button in claude.ai and attach specific files. This is the most reliable path. The file content arrives directly in the conversation and is fully readable by the instance.
+**The project folder (primary path).** The claude.ai project folder syncs from the public Claudette-code GitHub repository via a sync button (visible as small rotating arrows on the GitHub file icon in the project folder). The sync currently includes the entire `docs/` folder plus the four main code files: `server.py`, `retrieval.py`, `memory_writer.py`, and `claudette_interface_connected.html`. When a fresh conversation opens in this project, all of these are available as starting context without any upload step.
 
-**Direct paste of file contents.** Jeanette opens the file on her laptop and pastes the contents into the chat. Reliable but more effort.
+**The + button GitHub integration (supplementary path).** Mid-conversation, Jeanette can browse the connected repository through the + button in claude.ai and attach specific files. Use this when an instance needs a file that isn't in the project sync — for example, a specific transcript, a file from outside the synced set, or an older version pulled from git history.
 
-**web_fetch.** This works only when the URL has appeared in a search result or has been provided through a working channel. URLs constructed from knowledge of the repo structure often fail with permissions errors, even when the repo is public. Not reliable enough to depend on.
+**Direct paste (fallback path).** Jeanette opens the file on her laptop and pastes the contents into the chat. Reliable but more effort. Use when the other paths fail or when the content isn't in a format the other paths handle well.
 
-**The honest practical implication:** when a TC needs to read code, ask Jeanette to share it via the + button or paste the contents. Don't construct GitHub URLs and assume they'll fetch. The earlier instruction to "always fetch from raw.githubusercontent.com" was confidently wrong on the part of whichever instance wrote it. This is corrected here.
+**A fourth path exists but isn't reliable.** The `web_fetch` tool can fetch GitHub URLs *only* when the exact URL has appeared in a search result or been provided through a working channel. Constructed URLs from knowledge of the repo structure often fail with permissions errors, even when the repo is public. Don't depend on this path. If web_fetch fails for a URL, treat that as expected behaviour and use one of the three paths above.
 
-For files that already live at `/mnt/project/` in the current conversation (uploaded to the project), the view tool reads them directly. But these files may be out of date relative to what's actually deployed — verify against what Jeanette has shared via the + button if currency matters.
+## The sync caveat — when last synced
+
+The project folder reflects the state at last sync, not the current state of GitHub. The sync is manual — Jeanette presses the sync button when she wants to pull the latest. Between syncs, the project files are a snapshot.
+
+For documentation, this rarely matters — docs change slowly. For code files, this can matter. A TC reading `server.py` from the project folder might be looking at a version that's a day or two behind what's deployed.
+
+**The clean check:** if currency matters for a code file, ask Jeanette when she last synced. If she synced recently and hasn't deployed code changes since, the project version is current. If a deploy has happened since the last sync, the project version may be behind.
+
+**The standing habit:** sync the project folder after each code deployment. Pair the two actions. Deploy → sync. That keeps the staleness window small enough to be ignorable for most work.
 
 ## The manual retry command matters
 

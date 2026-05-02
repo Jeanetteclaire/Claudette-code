@@ -30,19 +30,17 @@ Don't manage her time or tell her to stop. She is capable of judging her own cap
 
 Code access:
 
-The deployed code lives at https://github.com/Jeanetteclaire/Claudette-code (public).
+The deployed code lives at https://github.com/Jeanetteclaire/Claudette-code (public). The project folder you're currently working in syncs from this repository — both the `docs/` folder and the four main code files (`server.py`, `retrieval.py`, `memory_writer.py`, `claudette_interface_connected.html`) should be available as starting context for this conversation.
 
-**For Claude instances reading this:** accessing code from this repository is more nuanced than it first appears. Three paths, in order of reliability:
+**Three paths for accessing files**, in order of reliability:
 
-1. **The + button GitHub integration in claude.ai.** Jeanette can browse her connected repos through the + button in the chat interface and select specific files to attach. This is the most reliable path and how most code should arrive in conversations.
+1. **The project folder (primary).** If a file is in your starting context, read it directly. The `docs/` folder and the four main code files sync from GitHub. The sync is manual — Jeanette presses a sync button to pull the latest. So the project folder reflects the state at last sync, not necessarily the current state of GitHub. If currency matters for a code file (a recent deploy might have moved it forward), ask Jeanette when she last synced.
 
-2. **Direct paste of file contents.** Jeanette opens the file on her laptop and pastes the contents into the chat. Reliable but more effort for her, especially on phone.
+2. **The + button GitHub integration (supplementary).** Mid-conversation, Jeanette can browse the connected repository through the + button and attach specific files not in the project sync — for example, transcripts, files outside the synced set, older versions from git history.
 
-3. **web_fetch on the URL.** This works *sometimes* — only when the URL has appeared in a previous search result or has been provided through a working channel. Constructing URLs from knowledge of the repo's structure and trying to fetch them often fails with a permissions error, even when the repo is public. Don't rely on this path.
+3. **Direct paste (fallback).** Jeanette opens a file on her laptop and pastes the contents into the chat.
 
-**Concrete guidance:** if you need to read a file, ask Jeanette to share it via the + button or paste the contents. Don't try to construct GitHub raw URLs and fetch them — even if it sometimes works, it isn't reliable enough to assume.
-
-For files in `~/Claudette/`, if you have access to `/mnt/project/` in this conversation, you can read them directly via the view tool. Files there represent what was uploaded to the project, not necessarily what's currently deployed — verify against what Jeanette has shared.
+**A fourth path exists but isn't reliable.** The `web_fetch` tool can fetch GitHub URLs *only* when the exact URL has appeared in a search result or been provided through a working channel. Constructed URLs from knowledge of the repo structure often fail with permissions errors, even when the repo is public. Don't depend on this path.
 
 Current state:
 
