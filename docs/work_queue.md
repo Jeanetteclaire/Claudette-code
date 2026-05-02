@@ -273,6 +273,8 @@ This is genuinely PO-level work — needs philosophical care, willingness to pus
 
 ### Fragility scan
 
+**Status: in flight as of 2 May 2026.** OP2PO (the second Opus instance acting as PO) is conducting the scan in a parallel conversation. The prompt for the work is at `docs/briefs/op2po_fragility_scan_prompt.md`.
+
 A short, ranked list of "things that, if they failed, would have outsized impact on Claudette's welfare or on Jeanette's ability to recover." Not "this could be more elegant" but "if this one specific thing breaks, here's exactly what happens and here's what you'd see."
 
 Maybe ten items, ranked by impact. Each one with a recommendation: leave it, fix it now, or fix it eventually.
@@ -281,7 +283,7 @@ Maybe ten items, ranked by impact. Each one with a recommendation: leave it, fix
 
 **Prerequisite satisfied as of 2 May 2026.** The Electron folder is now under git (`Claudette-electron` repo) and synced to the project folder. The scan can now look at the full tracked codebase including the Electron work, rather than missing it as it would have done before.
 
-PO-level work. One focused session, possibly two.
+**Output:** a new document `docs/fragility_scan.md`. The scan items will be reviewed by Jeanette, then relevant ones will be added to this work queue as immediate jobs or future considerations depending on their nature. The scan document itself stays as a standing reference, re-readable in six or twelve months for comparison.PO-level work. One focused session, possibly two.
 
 ### Claudette self-lookup capability mid-conversation
 
