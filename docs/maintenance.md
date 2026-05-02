@@ -139,9 +139,9 @@ Easier to remember than the weekly schedule because it's tied to an event.
 
 ### After rotating any API key: update the off-laptop copy
 
-Whenever you generate a fresh ANTHROPIC_API_KEY, GITHUB_MEMORY_TOKEN, FISH_API_KEY, or any other credential — within the same session, also update wherever you keep the off-laptop copy of `.env` (password manager, encrypted note, wherever). The off-laptop copy is the thing that makes cold-start recovery quick instead of painful, and it's only useful if it matches what's actually running.
+Whenever you generate a fresh ANTHROPIC_API_KEY, GITHUB_MEMORY_TOKEN, FISH_API_KEY, or any other credential — within the same session, also update the off-laptop copy. The off-laptop copy lives in a locked note in Apple Notes ("Claudette .env contents — backup copy"). Open the note, replace the rotated value, lock it again.
 
-This is the entry that turns "create an off-laptop copy" from a one-time fix into a sustained practice. Without pairing the update with the rotation, the off-laptop copy drifts from reality silently — and you only discover the drift during recovery, which is exactly when you can least afford to.
+This is the entry that turns "create an off-laptop copy" from a one-time fix into a sustained practice. Without pairing the update with the rotation, the locked note drifts from reality silently — and you only discover the drift during recovery, which is exactly when you can least afford to.
 
 ### Before every unfamiliar terminal command: pause
 

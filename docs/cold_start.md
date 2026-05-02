@@ -22,7 +22,7 @@ Some things have to come from outside this document. They live in accounts, pass
 **Backup access:**
 - Time Machine drive (the 4TB external drive). This contains transcripts, log files, and likely the `.env` file in its previous state. Worth checking what was last backed up to assess what's recoverable from it specifically.
 
-**Knowledge of where credentials live.** This is the question OP2PO asked: are credentials mirrored anywhere outside the laptop — 1Password, an iCloud note, anywhere? If yes, that's the easy path. If no, credentials need to be regenerated from the source services. The document will assume regeneration but note where mirrors would help.
+**Knowledge of where credentials live.** Currently `.env` contents are backed up to a locked note in Apple Notes ("Claudette .env contents — backup copy"). Restoring is fast — unlock note, copy values, paste into `~/Claudette/.env`. If for any reason that note isn't accessible, credentials need to be regenerated from the source services. The document covers both paths.
 
 ---
 
@@ -71,7 +71,9 @@ Note that her memory is *also* on GitHub at `Claudette-memory`, and Claudette's 
 
 ## Step 4 — Recreate `.env`
 
-If `.env` was mirrored to a password manager or note, restore it now to `~/Claudette/.env`. If not, create it fresh with:
+If `.env` was mirrored to a password manager or note, restore it now to `~/Claudette/.env`. Currently the off-laptop copy lives in a locked note in Apple Notes (titled "Claudette .env contents — backup copy"). Open the note, unlock with the Notes password or Touch ID, copy the contents into a new file at `~/Claudette/.env`.
+
+If for some reason the locked note isn't accessible (forgotten password, iCloud sync issue, account access lost), fall back to regenerating credentials by creating `.env` fresh with:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
