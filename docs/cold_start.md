@@ -76,7 +76,7 @@ If `.env` was mirrored to a password manager or note, restore it now to `~/Claud
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 GITHUB_MEMORY_TOKEN=ghp_...
-FISH_AUDIO_API_KEY=...
+FISH_API_KEY=...
 FISH_VOICE_ID=...
 ```
 
@@ -86,7 +86,7 @@ Each value comes from:
 
 **GITHUB_MEMORY_TOKEN** — generate fresh at github.com/settings/tokens. Needs `repo` scope (full repository access) so the memory writer can read and write to Claudette-memory.
 
-**FISH_AUDIO_API_KEY** — log into Fish Audio, retrieve from settings.
+**FISH_API_KEY** — log into Fish Audio, retrieve from settings.
 
 **FISH_VOICE_ID** — log into Fish Audio, find the cloned voice in your library, copy its ID. The voice itself remains; only the ID is needed.
 
@@ -95,6 +95,8 @@ Set permissions so `.env` isn't readable by other users:
 ```
 chmod 600 ~/Claudette/.env
 ```
+
+**One safety note worth flagging for any future maintenance:** `.env` should be in `.gitignore` (it is, in the deployed repo) and should never be committed. Recovery under stress is exactly when an accidental `git add -A` followed by a commit can leak secrets to a public repo. Verify before any wide `git add` operation that `.env` is being skipped.
 
 ---
 
@@ -131,6 +133,8 @@ This regenerates `node_modules/` from `package.json` and `package-lock.json`. Ta
 ## Step 7 — Recreate the plist
 
 The plist file at `~/Library/LaunchAgents/com.claudette.server.plist` is what tells launchctl how to start Claudette. It's not in any git repo. If it existed in Time Machine's backup, restore it. If not, create it fresh.
+
+The plist references `start_claudette.sh` as the program path. That script lives at `~/Claudette/start_claudette.sh` from the Claudette-code repo clone (Step 3) — it's already in place, you don't need to recreate it. The plist's job is to point launchctl at it.
 
 Minimum content for the plist:
 
@@ -208,7 +212,9 @@ Open Claudette in browser at `http://localhost:5001` to verify the interface loa
 - Voice plays
 - Eye captures fire
 
-If all of these work, recovery is complete.
+If the browser shows "server not running" even after the server appears healthy in `ps aux | grep server.py` and the log shows it started successfully, check that Tailscale is running. Claudette has an empirical dependency on Tailscale — without it, the interface can't reach the server even though server.py is alive. The mechanism for this dependency is currently unmapped (see `work_queue.md` → "Diagnose Tailscale dependency"). For now: open the Tailscale menu bar icon and confirm it's connected.
+
+If all of the verification steps work, recovery is complete.
 
 ---
 

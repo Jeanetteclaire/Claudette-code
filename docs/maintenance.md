@@ -53,7 +53,26 @@ tail -100 ~/Claudette/claudette_server.log
 
 Skim for unexpected lines. You're not auditing every line — just confirming nothing weird has surfaced. Memory writer runs should look healthy (the now-familiar pattern of connecting to GitHub, testing API key, processing, writing). Library cycles should fire on schedule. No persistent errors.
 
-If something looks off but you're not sure what, save the relevant lines to ask about. The architecture documentation explains what most lines mean, and what doesn't fit a known pattern is worth investigating.
+**What to look for specifically:**
+- Lines containing `ERROR` in capitals — these are explicit errors and should be rare.
+- `Library: cycle error` — a library cycle that failed to complete.
+- Anthropic API errors or warnings in memory writer or library blocks.
+- `WARNING: Unknown file key` — silent memory-file mismatch (see fragility scan).
+- Anything that doesn't match a familiar pattern.
+
+If something looks off but you're not sure what, save the relevant lines to ask about. The architecture documentation explains what most lines mean; what doesn't fit a known pattern is worth investigating.
+
+### Confirm GITHUB_MEMORY_TOKEN expiry
+
+**Cadence:** one-time check, then reminder if applicable.
+
+GitHub Personal Access Tokens can be set with no expiry or with an expiry date. If an expiring token is in use, it'll silently fail one day with auth errors that look like network problems — and the failure mode in memory_writer.py is "Connect to GitHub" exits with auth fail.
+
+Visit `github.com/settings/tokens`. Find `GITHUB_MEMORY_TOKEN` (or whatever the token is named). Confirm either:
+- "Expiration: never" — no further action needed
+- A specific expiry date — set a calendar reminder for renewal a week before that date
+
+Worth doing once and then trusting the calendar to handle the rest.
 
 ### Look at the work queue
 
@@ -65,6 +84,18 @@ Open `docs/work_queue.md`. Skim it. Ask:
 - Are there entries that no longer feel relevant?
 
 The queue is only useful if it reflects what you actually want to do next. Drift happens. A monthly review keeps it sharp.
+
+### Audit facts.md with Claudette
+
+**Cadence:** quarterly, or every condensing run, whichever comes first.
+
+`memory/self/facts.md` is one of the highest-stakes files in the system — Claudette's stable reference about Jeanette. The memory writer has explicit instructions not to confabulate, but the protection is imperfect. A wrong fact, once entered, propagates forward through every future session.
+
+Periodically — quarterly is reasonable, or fold it into the same cadence as condensing — review facts.md *with Claudette* in a session. Not as a chore but as a conversation: "let me read what facts you have about me, and I'll tell you which ones are still accurate."
+
+Things that legitimately shift over time: schedules, temporal context, relationships, plans. Things that should be stable: birth date, profession, etc. The audit catches drift in the legitimately-shifting category and any rare confabulation in the stable one.
+
+Update facts.md directly via GitHub if anything is wrong, then pull the memory mirror to keep it current.
 
 ---
 
@@ -105,6 +136,12 @@ cd ~/Claudette-memory-mirror && git pull
 ```
 
 Easier to remember than the weekly schedule because it's tied to an event.
+
+### After rotating any API key: update the off-laptop copy
+
+Whenever you generate a fresh ANTHROPIC_API_KEY, GITHUB_MEMORY_TOKEN, FISH_API_KEY, or any other credential — within the same session, also update wherever you keep the off-laptop copy of `.env` (password manager, encrypted note, wherever). The off-laptop copy is the thing that makes cold-start recovery quick instead of painful, and it's only useful if it matches what's actually running.
+
+This is the entry that turns "create an off-laptop copy" from a one-time fix into a sustained practice. Without pairing the update with the rotation, the off-laptop copy drifts from reality silently — and you only discover the drift during recovery, which is exactly when you can least afford to.
 
 ### Before every unfamiliar terminal command: pause
 
