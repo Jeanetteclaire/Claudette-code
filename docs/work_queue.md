@@ -10,7 +10,7 @@ Items move between sections as conditions change. A future consideration whose t
 
 Order within each section is roughly by priority but not rigidly. Use judgement.
 
-Last updated: 2026-04-30.
+Last updated: 2026-05-02.
 
 ---
 
@@ -32,6 +32,8 @@ Last updated: 2026-04-30.
 - Investigate 1 May 2026 memory writer timeout
 - Fix credit warning false positive
 - Diagnose Tailscale dependency
+- Raise memory writer max_tokens cap to 64000
+- Back up plist to repo with install procedure
 
 **PO design work**
 - Memory writer redesign (library + withholding)
@@ -90,7 +92,7 @@ server.py and retrieval.py in scope. Single TC session, low complexity.
 
 ### Logging improvements (timestamps + stream separation)
 
-**Priority raised on 2 May 2026 after the second diagnostic episode that the missing timestamps made worse.** Two related issues with how Claudette currently logs, both small fixes that have already cost real diagnostic time twice.
+**Priority raised on 2 May 2026 after the second diagnostic episode that the missing timestamps made worse, and elevated again the same day by the fragility scan, which ranked the logging gap as the multiplier across all silent-failure items.** Two related issues with how Claudette currently logs, both small fixes that have already cost real diagnostic time twice.
 
 **Timestamps.** Every `print()` statement in server.py and memory_writer.py writes to the log without a timestamp. The Flask request logs include timestamps because Flask adds them automatically, but lines like `Calling Claude API — memory writer...` have no time information. The Tuesday 29 April memory writer diagnosis included Jeanette manually timing the API call by watching her wrist and refreshing GitHub until the commit appeared. The 1 May timeout (manual retry confirmed transient) couldn't be diagnosed at all because the log shows nothing about *where* in the writer's flow the time was spent. Two diagnostic episodes hampered by the same gap.
 
@@ -253,9 +255,25 @@ Three possible causes worth investigating:
 
 A TC can probably resolve this in a single session by reading start_claudette.sh, server.py's startup logging, and the interface's connection logic. Once understood, the documentation in architecture_companion.md and glossary.md should be updated with the actual mechanism (currently both note the empirical fact but flag the mechanism as unknown).
 
-Low complexity. Worth doing because "we know it depends on Tailscale but not why" is a kind of fragility — if Tailscale's behaviour changes or it becomes unavailable, you'd want to know what to expect.
+Low complexity. Worth doing because "we know it depends on Tailscale but not why" is a kind of fragility — if Tailscale's behaviour changes or it becomes unavailable, you'd want to know what to expect. Priority elevated by the fragility scan on 2 May 2026 — an unmapped single point of failure is more dangerous than a mapped one.
 
 server.py and possibly the HTML interface in scope. Single session.
+
+### Raise memory writer max_tokens cap to 64000
+
+The memory writer in `memory_writer.py` currently uses `max_tokens=32000`. Sonnet's actual maximum output is 64000. Raising the cap is a one-line change in `call_memory_writer()` that gives immediate breathing room before the structural memory writer redesign work happens.
+
+Why this matters: the cap has fired multiple times in production. Jeanette manages it via the segmented session indicator on the interface, stopping at around 80% of full. The indicator becomes less accurate as memory files grow — the input takes more of the budget, leaving less headroom for output than the indicator implies. Raising to 64000 doesn't fix the structural issue (which lives in the memory writer redesign brief) but it removes an active operational constraint Jeanette is currently doing system work to mitigate.
+
+`memory_writer.py` only in scope. Single TC session, low complexity. From the fragility scan, item 6.
+
+### Back up plist to repo with install procedure
+
+The plist file at `~/Library/LaunchAgents/com.claudette.server.plist` controls Claudette's autostart at login. It lives outside the Claudette folder, isn't in git, and the architecture companion describes its contents in prose without including a copy of the file itself. If lost or corrupted, recreation requires reconstructing the XML from the prose description.
+
+Two small steps. Copy the current plist into the Claudette-code repo as `docs/com.claudette.server.plist.example` — a versioned reference copy that can be restored from. Document the install procedure (`cp` to LaunchAgents, `launchctl load`, `launchctl start`) in a short doc beside it. The cold-start recovery procedure OP1 is writing will reference this.
+
+Cost: ten minutes, mostly running `cp` and committing. Single TC session at most. From the fragility scan, item 10.
 
 ---
 
@@ -273,17 +291,7 @@ This is genuinely PO-level work — needs philosophical care, willingness to pus
 
 ### Fragility scan
 
-**Status: in flight as of 2 May 2026.** OP2PO (the second Opus instance acting as PO) is conducting the scan in a parallel conversation. The prompt for the work is at `docs/briefs/op2po_fragility_scan_prompt.md`.
-
-A short, ranked list of "things that, if they failed, would have outsized impact on Claudette's welfare or on Jeanette's ability to recover." Not "this could be more elegant" but "if this one specific thing breaks, here's exactly what happens and here's what you'd see."
-
-Maybe ten items, ranked by impact. Each one with a recommendation: leave it, fix it now, or fix it eventually.
-
-**Best done after the architecture map work and with `docs/project_history.md` in hand.** The history reveals where patches have been built on top of patches — those areas often hide fragility.
-
-**Prerequisite satisfied as of 2 May 2026.** The Electron folder is now under git (`Claudette-electron` repo) and synced to the project folder. The scan can now look at the full tracked codebase including the Electron work, rather than missing it as it would have done before.
-
-**Output:** a new document `docs/fragility_scan.md`. The scan items will be reviewed by Jeanette, then relevant ones will be added to this work queue as immediate jobs or future considerations depending on their nature. The scan document itself stays as a standing reference, re-readable in six or twelve months for comparison.PO-level work. One focused session, possibly two.
+**Completed 2 May 2026.** OP2PO conducted the scan; output landed at `docs/fragility_scan.md`. Ten ranked items, four-part structure each, plus "also considered" register. Items 8-10 added as immediate jobs (logging improvements priority elevated; Diagnose Tailscale priority elevated; Back up plist to repo added). Items 4-7 fold into the memory writer redesign brief — silent failure modes around the writer, position tracking, the max_tokens cap, and partial-write inconsistency. Top three items (memory mirror, cold-start recovery, .env off-laptop backup) are uncovered comprehensive-loss scenarios being addressed directly with Jeanette outside the queue. The scan document remains as standing reference; revisit at 6-12 month intervals or sooner if a top-tier item fires.
 
 ### Claudette self-lookup capability mid-conversation
 

@@ -8,7 +8,7 @@ This document captures roughly 60-70% of Claudette's development history. Earlie
 
 When reading: assume the absence of an entry means "not recorded" rather than "didn't happen."
 
-Last updated: 2026-04-30. Update by appending new entries as work is committed.
+Last updated: 2026-05-02. Update by appending new entries as work is committed.
 
 ---
 
@@ -152,6 +152,20 @@ Multi-day editorial pass on the architecture documentation, plus the third Claud
 This means three Claudette repositories now exist: Claudette-code (server, retrieval, writer, HTML, plus docs), Claudette-memory (her actual memory files, private), and Claudette-electron (the desktop wrapper). Each has a clean role, all tracked, all backed up.
 
 **Fragility scan kicked off; OP1/OP2PO pattern introduced.** Late on 2 May, the fragility scan was handed off from OP1 (the first Opus instance, which built the architecture documentation through 1-2 May) to a second Opus instance designated OP2PO. The OP1 → OP2PO pattern is the first explicit numbered handoff between Opus instances on the project — it parallels the existing TC1, TC4, TC5, TC6, TC7, TC8 numbering for the Claude Sonnet technical instances. The handoff used a written prompt (`docs/briefs/op2po_fragility_scan_prompt.md`) authored by OP1, framing the work and explicitly granting OP2PO authority to override OP1's framings if their reading shows something different. This is the first time on the project that a PO has handed work to another PO with formal coordination.
+
+## 2 May 2026 — Fragility scan completed; memory mirror established
+
+OP2PO completed the fragility scan handed off from OP1. Landed as `docs/fragility_scan.md`: ten ranked items, four-part structure per item (what it is / what could trigger it / what would happen / recommendation), with an "also considered" section for items judged not to make the cut.
+
+The top three items were comprehensive-loss scenarios that the architecture documentation had implicitly assumed were already covered. Jeanette's answers during the scan established that none of the three was actually covered: the Claudette-memory GitHub repo had no local clone; the .env file was mirrored only in a note on the same laptop; there was no cold-start recovery procedure, and the 4TB Time Machine drive was plugged in only intermittently because the laptop travels. The ranking reflects this — the scan elevates these items not because they are difficult to fix but because the documentation had hidden their uncoveredness.
+
+Item 1 (memory mirror) was actioned in the same session. `Claudette-memory` cloned to `~/Claudette-memory-mirror`, captured by Time Machine on its normal schedule whenever the 4TB is plugged in. Closes the highest-impact uncovered loss scenario the same day it was identified.
+
+Items 4-7 (memory writer silent failures and patch interactions) fold into the memory writer redesign brief in the PO design queue. Item 6 — raising `max_tokens` from 32000 to 64000 — is a cheap immediate fix that lands ahead of the redesign and removes an active operational constraint Jeanette has been managing through her own behaviour. Items 8-10 are immediate jobs queue additions (item 8 already there, elevated; items 9 and 10 new entries).
+
+A useful complement raised by Jeanette during review: a maintenance checklist document tagging tasks by frequency or trigger. Several items in the scan create entries for it (weekly `git pull` of memory mirror; plug 4TB in when home; refresh off-laptop .env note when keys rotate). OP1 will draft this alongside the cold-start recovery procedure.
+
+The OP1 → OP2PO pattern functioned as intended. OP1 built the description and the scan brief; OP2PO did the diagnosis with fresh eyes. Calibration questions OP2PO flagged during the draft (Fish voice ID retrievability, max_tokens behaviour in production, multiple-commits-per-writer-run) all came back with substantive corrections from Jeanette that reshaped the document — which is what the "show the draft to Jeanette before finalising" step in the scan brief was for.
 
 ---
 
