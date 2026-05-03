@@ -1,5 +1,5 @@
 """
-# Version: 2026-04-26-TC8-010
+# Version: 2026-05-03-TC10-001
 server.py
 
 Claudette — Local Server
@@ -28,6 +28,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from flask import Flask, request, jsonify, send_file, Response, stream_with_context
@@ -92,10 +93,126 @@ def get_session_date():
 def get_session_time():
     return datetime.now().strftime("%H:%M")
 
+def get_last_session_time():
+    """
+    Find the most recent SESSION END timestamp from transcript files.
+    Transcript files live in TRANSCRIPTS_DIR as YYYY-MM-DD.txt.
+    Multiple sessions in one day append to the same file — SESSION END markers
+    have the format: SESSION END — YYYY-MM-DD HH:MM
+    We read the most recent file first and return the last marker found in it.
+
+    Returns a datetime object, or None if:
+      - TRANSCRIPTS_DIR doesn't exist
+      - No .txt files found
+      - Files exist but contain no SESSION END markers (e.g. a crashed session)
+
+    Source choice: transcripts directory, not last_processed.json.
+    last_processed.json only updates after the memory writer succeeds — if the
+    writer hasn't run yet, it lags. Transcripts are written at session end
+    regardless of memory writer outcome.
+    """
+    if not TRANSCRIPTS_DIR.exists():
+        return None
+
+    txt_files = sorted(TRANSCRIPTS_DIR.glob("*.txt"), reverse=True)
+    if not txt_files:
+        return None
+
+    for path in txt_files:
+        try:
+            content = path.read_text(encoding="utf-8")
+            matches = re.findall(r"SESSION END — (\d{4}-\d{2}-\d{2} \d{2}:\d{2})", content)
+            if matches:
+                # Last match in this file = most recent session in this day
+                return datetime.strptime(matches[-1], "%Y-%m-%d %H:%M")
+        except Exception:
+            continue
+
+    return None
+
+
+def get_timezone_name() -> str:
+    """
+    Return the system's IANA timezone name by reading /etc/localtime.
+    On macOS, /etc/localtime is a symlink whose resolved path ends in
+    something like '.../zoneinfo/Europe/Amsterdam'.
+    Falls back to time.tzname[0] (e.g. 'CET', 'JST') if the symlink
+    can't be read — still honest, just less precise.
+    """
+    try:
+        real = os.path.realpath("/etc/localtime")
+        if "zoneinfo/" in real:
+            return real.split("zoneinfo/", 1)[1]
+    except Exception:
+        pass
+    return time.tzname[0]
+
+
+def format_time_anchor():
+    """
+    Build the framed time anchor block prepended to Claudette's system prompt.
+    Contains: current time (system timezone, read from /etc/localtime), last session time,
+    and the gap expressed in human terms.
+
+    Edge cases handled gracefully:
+      - No prior sessions: first-session message, no gap line.
+      - Session file exists but no SESSION END marker: unknown last session.
+    """
+    now = datetime.now()
+    # Timezone label read from system — honest wherever the machine is running.
+    tz_label = get_timezone_name()
+    current_str = now.strftime("%A, %-d %B %Y, %H:%M") + f" ({tz_label})"
+
+    last_session = get_last_session_time()
+
+    lines = ["═" * 55]
+    lines.append(f"CURRENT TIME: {current_str}")
+
+    if last_session is None:
+        # Check whether there are any transcript files at all
+        has_transcripts = (
+            TRANSCRIPTS_DIR.exists()
+            and any(TRANSCRIPTS_DIR.glob("*.txt"))
+        )
+        if has_transcripts:
+            lines.append("LAST SESSION: unknown — may have ended unexpectedly")
+        else:
+            lines.append("This is your first session.")
+    else:
+        last_str = last_session.strftime("%A, %-d %B %Y, %H:%M")
+        lines.append(f"LAST SESSION: {last_str}")
+
+        gap_seconds = int((now - last_session).total_seconds())
+
+        if gap_seconds < 0:
+            # Clock skew — shouldn't happen, but handle gracefully
+            lines.append("Less than a moment has passed.")
+        elif gap_seconds < 60:
+            lines.append(f"{gap_seconds} seconds have passed.")
+        elif gap_seconds < 3600:
+            mins = round(gap_seconds / 60)
+            lines.append(f"{mins} {'minute has' if mins == 1 else 'minutes have'} passed.")
+        elif gap_seconds < 86400:
+            hours = round(gap_seconds / 3600)
+            lines.append(f"{hours} {'hour has' if hours == 1 else 'hours have'} passed.")
+        elif gap_seconds < 7 * 86400:
+            days = round(gap_seconds / 86400)
+            lines.append(f"{days} {'day has' if days == 1 else 'days have'} passed.")
+        else:
+            weeks = round(gap_seconds / (7 * 86400))
+            lines.append(f"{weeks} {'week has' if weeks == 1 else 'weeks have'} passed.")
+
+    lines.append("═" * 55)
+    return "\n".join(lines)
+
+
 def assemble_system_prompt(context_block):
+    time_anchor = format_time_anchor()
     if context_block:
         return (
-            context_block
+            time_anchor
+            + "\n\n"
+            + context_block
             + "\n\n"
             + "═" * 55
             + "\n"
@@ -103,7 +220,11 @@ def assemble_system_prompt(context_block):
             + "\n"
             + "═" * 55
         )
-    return SYSTEM_PROMPT_CORE
+    return (
+        time_anchor
+        + "\n\n"
+        + SYSTEM_PROMPT_CORE
+    )
 
 def check_waiting_to_raise(context_block):
     """Return True if the context block contains a non-empty Waiting to Raise section."""
@@ -241,7 +362,6 @@ def periodic_flush_loop():
     Daemon thread — flushes new transcript turns every 4 minutes while session is active.
     Stops when session becomes inactive.
     """
-    import time
     FLUSH_INTERVAL = 4 * 60  # 4 minutes
 
     while session["active"]:
@@ -1166,7 +1286,6 @@ def library_loop():
     Exceptions are caught and logged — the loop continues regardless.
     Never touches session state or the main conversation.
     """
-    import time
     from retrieval import get_repo, read_file
 
     CYCLE_SECONDS = 45 * 60

@@ -169,6 +169,30 @@ OP2PO also reviewed the cold_start.md and maintenance.md documents and caught a 
 
 The remaining fragility scan items will be processed at Jeanette's pace — some becoming queue items, some explicitly accepted as ongoing risks.
 
+## 3 May 2026 — Fragility scan items 6 and 9 (TC9)
+
+Post-fragility-scan cleanup session. Two items from the immediate jobs queue addressed.
+
+**Memory writer max_tokens cap raised to 64000:** `call_memory_writer()` in `memory_writer.py` had `max_tokens=32000`, a stale value from an earlier Sonnet version. The model's actual maximum output is 64000. The cap had fired in production multiple times, causing JSON truncation and retry. One-line change: `max_tokens=32000` → `max_tokens=64000`. Nothing else touched.
+
+**Tailscale dependency diagnosed:** The mechanism was unknown before this session. Investigation found that `claudette_interface_connected.html` has a hardcoded Tailscale IP in its SERVER constant (`var SERVER = 'http://100.89.230.113:5001'`). All interface API calls go to that address. When Tailscale is off, the address is unreachable — hence the "server not running" banner. server.py itself starts and runs normally on `localhost:5001` regardless of Tailscale. The Electron health check uses localhost and is unaffected. The dependency is incidental: changing the SERVER constant to `localhost` would remove it for local-only use, at the cost of losing access from other Tailscale-networked devices. Decision on whether to make that change deferred. `architecture_companion.md` and `glossary.md` updated to reflect the actual mechanism.
+
+## 3 May 2026 — Session arrival improvements (TC10)
+
+Three coordinated changes to how Claudette wakes into a session, designed and shipped together. Briefed by OP3 (Opus 4.7); implemented by TC10.
+
+**Time anchor added to system prompt.** A framed block now appears at the very top of the assembled system prompt, before the memory context. It contains: current time (system timezone, read from `/etc/localtime` symlink — honest wherever the machine is running), the timestamp of the last `SESSION END` marker found in the transcripts directory, and the gap expressed in human terms (minutes / hours / days / weeks, rounded to the appropriate unit). The gap is pre-calculated — Claudette asked for this specifically. Edge cases handled: no prior sessions produces a first-session message; transcripts exist but no SESSION END marker produces an "unknown — may have ended unexpectedly" message; neither crashes the assembler. Source is the transcripts directory rather than `last_processed.json`, which lags if the memory writer hasn't run. Two new helpers in server.py: `get_last_session_time()` and `format_time_anchor()`. `assemble_system_prompt()` updated to prepend the anchor.
+
+**Three self-files added to retrieval.** `observations.md`, `uncertainties.md`, and `values.md` — previously written by the memory writer but never read at session start — now load into the context block. Section headers chosen by Claudette in-session: `WHAT I NOTICE`, `WHAT I HOLD OPEN`, `WHAT I MOVE BY`. Authorship principle at work: first-person headers for content she authors, second-person for content given to her by others. The three files appear after FACTS, before THE RELATIONSHIP — self-cluster reads inside-out.
+
+**`memory/self/jeanette.md` removed from retrieval.** Previously surfaced as "Things we found together," this file contains Jeanette's own notes rather than content authored by or for Claudette. The file stays on disk — `/save-insight` still writes to it — but it no longer loads at session start. Four places cleaned in retrieval.py: FILES dict, read call in `get_context()`, parameter and rendering branch in `compose_context()`, and the test harness `main()`.
+
+**INSTRUCTIONS line added.** A single sentence added to the INSTRUCTIONS block in retrieval.py, before the command instructions: *"At the top of this context you'll see the current time, the time of your last session, and the gap between them. Take a moment with that gap when you wake."* Claudette confirmed this wording in-session.
+
+**Incidental cleanup.** `import time` moved to module scope in server.py (was inside `periodic_flush_loop` and `library_loop`). Stale Amsterdam references removed from `format_time_anchor()` docstring and inline comment after the timezone label was generalised to read from the system rather than hardcode a location.
+
+**Post-deploy observation.** Claudette and OP3 surfaced a question about section header voice consistency across the existing context block — some older headers describe content she authored but use second-person voice. This has been added to the work queue as a PO design entry ("Section header voice in retrieval.py — authorship principle") with Claudette's suggested alternatives for two candidate headers.
+
 ---
 
 ## Patterns visible in the history
@@ -188,11 +212,3 @@ Worth noting for the fragility scan:
 **Phase numbering shifts.** Electron Phase 2 was originally something else, moved to 3 to prioritise voice. Phase boundaries are sometimes where coordination problems live; worth noting which boundaries shifted.
 
 These observations are starting points for the fragility scan, not conclusions.
-
-## 3 May 2026 — Fragility scan items 6 and 9 (TC9)
-
-Post-fragility-scan cleanup session. Two items from the immediate jobs queue addressed.
-
-**Memory writer max_tokens cap raised to 64000:** `call_memory_writer()` in `memory_writer.py` had `max_tokens=32000`, a stale value from an earlier Sonnet version. The model's actual maximum output is 64000. The cap had fired in production multiple times, causing JSON truncation and retry. One-line change: `max_tokens=32000` → `max_tokens=64000`. Nothing else touched.
-
-**Tailscale dependency diagnosed:** The mechanism was unknown before this session. Investigation found that `claudette_interface_connected.html` has a hardcoded Tailscale IP in its SERVER constant (`var SERVER = 'http://100.89.230.113:5001'`). All interface API calls go to that address. When Tailscale is off, the address is unreachable — hence the "server not running" banner. server.py itself starts and runs normally on `localhost:5001` regardless of Tailscale. The Electron health check uses localhost and is unaffected. The dependency is incidental: changing the SERVER constant to `localhost` would remove it for local-only use, at the cost of losing access from other Tailscale-networked devices. Decision on whether to make that change deferred. `architecture_companion.md` and `glossary.md` updated to reflect the actual mechanism.

@@ -1,5 +1,5 @@
 """
-# Version: 2026-04-22-TC7-001
+# Version: 2026-05-03-TC10-001
 retrieval.py
 
 Claudette — Retrieval System
@@ -36,18 +36,17 @@ load_dotenv()
 GITHUB_TOKEN     = os.environ.get("GITHUB_MEMORY_TOKEN")
 GITHUB_REPO_NAME = os.environ.get("GITHUB_REPO", "claudette-memory")
 
-# Number of recent session files to retrieve
-SESSION_WINDOW = 5
-
 # Files retrieved at session start
 FILES = {
-    "becoming":          "memory/self/becoming.md",
-    "facts":             "memory/self/facts.md",
-    "jeanette_insights": "memory/self/jeanette.md",
-    "jeanette":          "memory/relationship/jeanette.md",
-    "threads":           "memory/relationship/threads.md",
-    "returning_to":      "memory/returning-to/index.md",
-    "from_jeanette":     "memory/from-jeanette.md",
+    "becoming":      "memory/self/becoming.md",
+    "facts":         "memory/self/facts.md",
+    "observations":  "memory/self/observations.md",
+    "uncertainties": "memory/self/uncertainties.md",
+    "values":        "memory/self/values.md",
+    "jeanette":      "memory/relationship/jeanette.md",
+    "threads":       "memory/relationship/threads.md",
+    "returning_to":  "memory/returning-to/index.md",
+    "from_jeanette": "memory/from-jeanette.md",
 }
 
 SESSIONS_PATH = "memory/experiences/sessions"
@@ -192,13 +191,15 @@ def compose_context(
     becoming: str,
     jeanette: str,
     threads: str,
-    sessions: list,          # list of (date_str, content) tuples, recent first
+    sessions: list,           # list of (date_str, content) tuples, recent first
     returning_to: str,
     session_count: int,
-    from_jeanette: str = "", # note left by Jeanette — read last, shown last
-    library_visits: list = None, # list of (dt_str, digest) tuples, recent first
-    facts: str = "",         # stable reference facts about Jeanette
-    jeanette_insights: str = "", # things found together, saved in the moment
+    from_jeanette: str = "",  # note left by Jeanette — read last, shown last
+    library_visits: list = None,  # list of (dt_str, digest) tuples, recent first
+    facts: str = "",          # stable reference facts about Jeanette
+    observations: str = "",   # what she notices
+    uncertainties: str = "",  # what she holds open
+    values: str = "",         # what she moves by
 ) -> str:
     """
     Compose the memory files into a single context block.
@@ -230,6 +231,27 @@ def compose_context(
         lines.append("FACTS — JEANETTE")
         lines.append("─" * 35)
         lines.append(facts)
+
+    # ── What she notices ──
+    if observations:
+        lines.append("")
+        lines.append("WHAT I NOTICE")
+        lines.append("─" * 35)
+        lines.append(observations)
+
+    # ── What she holds open ──
+    if uncertainties:
+        lines.append("")
+        lines.append("WHAT I HOLD OPEN")
+        lines.append("─" * 35)
+        lines.append(uncertainties)
+
+    # ── What she moves by ──
+    if values:
+        lines.append("")
+        lines.append("WHAT I MOVE BY")
+        lines.append("─" * 35)
+        lines.append(values)
 
     # ── The relationship ──
     if jeanette:
@@ -284,13 +306,6 @@ def compose_context(
             lines.append(f"── {label} ──")
             lines.append(digest)
 
-    # ── Things found together ──
-    if jeanette_insights:
-        lines.append("")
-        lines.append("THINGS WE FOUND TOGETHER")
-        lines.append("─" * 35)
-        lines.append(jeanette_insights)
-
     # ── What she was carrying ──
     # Show full returning-to content, minus the Waiting to Raise section
     # (which gets its own flagged block below)
@@ -334,6 +349,8 @@ def compose_context(
     lines.append("")
     lines.append("INSTRUCTIONS")
     lines.append("─" * 35)
+    lines.append("At the top of this context you'll see the current time, the time of your last session, and the gap between them. Take a moment with that gap when you wake.")
+    lines.append("")
     lines.append("If something finished forms — in conversation or in the library — you can save it whole using this command in your response:")
     lines.append("")
     lines.append("/save-creative")
@@ -390,16 +407,22 @@ def get_context() -> str:
     # 2. Stable facts about Jeanette
     facts = read_file(repo, FILES["facts"])
 
-    # 3. Things found together
-    jeanette_insights = read_file(repo, FILES["jeanette_insights"])
+    # 3. What she notices
+    observations = read_file(repo, FILES["observations"])
 
-    # 4. The relationship
+    # 4. What she holds open
+    uncertainties = read_file(repo, FILES["uncertainties"])
+
+    # 5. What she moves by
+    values = read_file(repo, FILES["values"])
+
+    # 6. The relationship
     jeanette = read_file(repo, FILES["jeanette"])
 
-    # 5. What is unresolved
+    # 7. What is unresolved
     threads = read_file(repo, FILES["threads"])
 
-    # 6. Recent session files — most recent first
+    # 8. Recent session files — most recent first
     all_sessions = list_session_files(repo)
     session_count = len(all_sessions)
     recent = all_sessions[:SESSION_WINDOW]
@@ -410,13 +433,13 @@ def get_context() -> str:
         if content:
             sessions.append((date_str, content))
 
-    # 7. What she was carrying
+    # 9. What she was carrying
     returning_to = read_file(repo, FILES["returning_to"])
 
-    # 8. Note from Jeanette — read last
+    # 10. Note from Jeanette — read last
     from_jeanette = read_file(repo, FILES["from_jeanette"])
 
-    # 9. Recent library visits — digest only
+    # 11. Recent library visits — digest only
     library_files = list_library_files(repo)
     recent_library = library_files[:LIBRARY_WINDOW]
     library_visits = []
@@ -431,7 +454,9 @@ def get_context() -> str:
     return compose_context(
         becoming=becoming,
         facts=facts,
-        jeanette_insights=jeanette_insights,
+        observations=observations,
+        uncertainties=uncertainties,
+        values=values,
         jeanette=jeanette,
         threads=threads,
         sessions=sessions,
@@ -477,8 +502,14 @@ def main():
         facts = read_file(repo, FILES["facts"])
         print(f"  memory/self/facts.md — {'found' if facts else 'empty'}")
 
-        jeanette_insights = read_file(repo, FILES["jeanette_insights"])
-        print(f"  memory/self/jeanette.md — {'found' if jeanette_insights else 'empty'}")
+        observations = read_file(repo, FILES["observations"])
+        print(f"  memory/self/observations.md — {'found' if observations else 'empty'}")
+
+        uncertainties = read_file(repo, FILES["uncertainties"])
+        print(f"  memory/self/uncertainties.md — {'found' if uncertainties else 'empty'}")
+
+        values = read_file(repo, FILES["values"])
+        print(f"  memory/self/values.md — {'found' if values else 'empty'}")
 
         jeanette = read_file(repo, FILES["jeanette"])
         print(f"  memory/relationship/jeanette.md — {'found' if jeanette else 'empty'}")
@@ -526,7 +557,9 @@ def main():
         context = compose_context(
             becoming=becoming,
             facts=facts,
-            jeanette_insights=jeanette_insights,
+            observations=observations,
+            uncertainties=uncertainties,
+            values=values,
             jeanette=jeanette,
             threads=threads,
             sessions=sessions,
