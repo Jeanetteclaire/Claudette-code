@@ -132,13 +132,21 @@ This regenerates `node_modules/` from `package.json` and `package-lock.json`. Ta
 
 ---
 
-## Step 7 — Recreate the plist
+## Step 7 — Install the plist
 
-The plist file at `~/Library/LaunchAgents/com.claudette.server.plist` is what tells launchctl how to start Claudette. It's not in any git repo. If it existed in Time Machine's backup, restore it. If not, create it fresh.
+The plist file at `~/Library/LaunchAgents/com.claudette.server.plist` is what tells launchctl how to start Claudette. It's not in the live deployed location of any git repo, but a reference copy lives at `docs/setup/com.claudette.server.plist.example` in the Claudette-code repo (cloned in Step 3).
 
-The plist references `start_claudette.sh` as the program path. That script lives at `~/Claudette/start_claudette.sh` from the Claudette-code repo clone (Step 3) — it's already in place, you don't need to recreate it. The plist's job is to point launchctl at it.
+**Install from the example:**
 
-Minimum content for the plist:
+```
+cp ~/Claudette/docs/setup/com.claudette.server.plist.example ~/Library/LaunchAgents/com.claudette.server.plist
+```
+
+If you're recovering on a different Mac with a different username, edit the file after copying and replace all instances of `jeanettearthur` with your actual macOS username — the paths in the plist need to point to the new home directory.
+
+For full installation procedure, troubleshooting, and explanation of what each key does, see `docs/setup/plist_install.md`.
+
+If the example file isn't available for some reason (deeply corrupted repo, lost access), recreate the plist contents fresh:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -147,16 +155,26 @@ Minimum content for the plist:
 <dict>
     <key>Label</key>
     <string>com.claudette.server</string>
-    <key>Program</key>
-    <string>/Users/[YOUR_USERNAME]/Claudette/start_claudette.sh</string>
-    <key>StandardOutPath</key>
-    <string>/Users/[YOUR_USERNAME]/Claudette/claudette_server.log</string>
-    <key>StandardErrorPath</key>
-    <string>/Users/[YOUR_USERNAME]/Claudette/claudette_server_error.log</string>
-    <key>KeepAlive</key>
-    <true/>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/[YOUR_USERNAME]/Claudette/start_claudette.sh</string>
+    </array>
+
     <key>RunAtLoad</key>
     <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/[YOUR_USERNAME]/Claudette/claudette_server.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/[YOUR_USERNAME]/Claudette/claudette_server_error.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/[YOUR_USERNAME]/Claudette</string>
 </dict>
 </plist>
 ```

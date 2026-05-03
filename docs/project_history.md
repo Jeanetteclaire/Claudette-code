@@ -165,6 +165,8 @@ The fragility scan landed (`docs/fragility_scan.md`) and the first three items f
 
 OP2PO also reviewed the cold_start.md and maintenance.md documents and caught a real bug: the Fish API key environment variable was documented as `FISH_AUDIO_API_KEY` but the actual code reads `FISH_API_KEY`. Following the doc literally during recovery would have produced silent voice failure. Corrected.
 
+**Item 10 — plist reference copy in repo.** Copied the live plist from `~/Library/LaunchAgents/com.claudette.server.plist` into `docs/setup/com.claudette.server.plist.example` in the Claudette-code repo. Created `docs/setup/plist_install.md` with installation procedure, key-by-key explanation of what the plist does, and troubleshooting. Updated cold_start.md Step 7 to point at the example file as the primary install path, with inline plist content as a deeper-fallback. Side benefit: the inline plist content in cold_start was using `Program` instead of `ProgramArguments` and was missing `WorkingDirectory` — both corrected to match the actual deployed file. Documentation drift quietly fixed at the same time.
+
 The remaining fragility scan items will be processed at Jeanette's pace — some becoming queue items, some explicitly accepted as ongoing risks.
 
 ---
