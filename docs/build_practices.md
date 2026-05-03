@@ -124,25 +124,29 @@ This was important when the project was reliant on copy-paste between Claude con
 
 ## Getting code and documentation into a conversation
 
-There are three real paths for a Claude instance to access Claudette's files, in order of reliability and convenience:
+There are real paths for a Claude instance to access Claudette's files. The mental model that matters most: **GitHub-synced content lives in *project knowledge* (searchable), not in the filesystem at `/mnt/project/` (readable as files).** Manually uploaded files appear in both places. Synced content does not.
 
-**The project folder (primary path).** The claude.ai project folder syncs from the public Claudette-code GitHub repository via a sync button (visible as small rotating arrows on the GitHub file icon in the project folder). The sync currently includes the entire `docs/` folder plus the four main code files: `server.py`, `retrieval.py`, `memory_writer.py`, and `claudette_interface_connected.html`. When a fresh conversation opens in this project, all of these are available as starting context without any upload step.
+This means a fresh instance opening this project will not find synced files by browsing `/mnt/project/`. They'll find them by searching project knowledge.
 
-**The + button GitHub integration (supplementary path).** Mid-conversation, Jeanette can browse the connected repository through the + button in claude.ai and attach specific files. Use this when an instance needs a file that isn't in the project sync — for example, a specific transcript, a file from outside the synced set, or an older version pulled from git history.
+In order of typical convenience:
 
-**Direct paste (fallback path).** Jeanette opens the file on her laptop and pastes the contents into the chat. Reliable but more effort. Use when the other paths fail or when the content isn't in a format the other paths handle well.
+**Project knowledge search (primary for synced content).** Use `project_knowledge_search` with queries naming the function, document section, or specific concept needed. The sync currently includes the entire `docs/` folder plus the four main code files: `server.py`, `retrieval.py`, `memory_writer.py`, and `claudette_interface_connected.html`. Search returns chunks rather than whole files — for tasks needing a full-file read, multiple searches with different queries can assemble the picture, or Jeanette can paste the file directly.
 
-**A fourth path exists but isn't reliable.** The `web_fetch` tool can fetch GitHub URLs *only* when the exact URL has appeared in a search result or been provided through a working channel. Constructed URLs from knowledge of the repo structure often fail with permissions errors, even when the repo is public. Don't depend on this path. If web_fetch fails for a URL, treat that as expected behaviour and use one of the three paths above.
+**Direct paste (supplementary).** Jeanette opens a file on her laptop and pastes the contents into the chat. Use when search returns chunks but you need continuous context, or for files outside the synced set.
+
+**The + button GitHub integration (also supplementary).** Mid-conversation, Jeanette can browse the connected repository through the + button and attach specific files. The attached file appears in the conversation as readable text — making it both searchable and visible via `view`.
+
+**A fourth path exists but isn't reliable.** The `web_fetch` tool can fetch GitHub URLs *only* when the exact URL has appeared in a search result or been provided through a working channel. Constructed URLs from knowledge of the repo structure often fail with permissions errors, even when the repo is public. Don't depend on this path. If web_fetch fails for a URL, treat that as expected behaviour and use one of the paths above.
 
 ## The sync caveat — when last synced
 
-The project folder reflects the state at last sync, not the current state of GitHub. The sync is manual — Jeanette presses the sync button when she wants to pull the latest. Between syncs, the project files are a snapshot.
+Project knowledge reflects the state at last sync, not the current state of GitHub. The sync is manual — Jeanette presses the sync button (small rotating arrows on the GitHub file icon in the project folder) when she wants to refresh. Between syncs, search results are a snapshot.
 
-For documentation, this rarely matters — docs change slowly. For code files, this can matter. A TC reading `server.py` from the project folder might be looking at a version that's a day or two behind what's deployed.
+For documentation, this rarely matters — docs change slowly. For code files, this can matter. A TC searching `memory_writer.py` content might be looking at a version that's a day or two behind what's deployed.
 
 **The clean check:** if currency matters for a code file, ask Jeanette when she last synced. If she synced recently and hasn't deployed code changes since, the project version is current. If a deploy has happened since the last sync, the project version may be behind.
 
-**The standing habit:** sync the project folder after each code deployment. Pair the two actions. Deploy → sync. That keeps the staleness window small enough to be ignorable for most work.
+**The standing habit:** sync the project after each code deployment. Pair the two actions. Deploy → sync. That keeps the staleness window small enough to be ignorable for most work.
 
 ## The manual retry command matters
 

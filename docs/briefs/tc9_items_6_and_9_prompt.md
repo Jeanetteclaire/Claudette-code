@@ -12,16 +12,24 @@ Your job in this session is to address two specific items from the fragility sca
 
 ## What you have to work with
 
-The project folder syncs from GitHub. You should have starting context including:
+The project on claude.ai is connected to the GitHub repository for Claudette-code. **The way that connection works is important to understand:** GitHub-synced content lives in *project knowledge* — it's accessible via `project_knowledge_search`, but it does **not** appear as files in the filesystem at `/mnt/project/`. Don't browse the file tree expecting to find synced files there; they aren't.
 
-- All the architecture documentation in `docs/`
-- The four code files (server.py, retrieval.py, memory_writer.py, claudette_interface_connected.html)
-- The four Electron files (main.js, preload.js, claudette_speech.swift, package.json)
-- The fragility scan output and all the briefs
+Instead, use `project_knowledge_search` with specific queries to retrieve content. Search returns chunks of files rather than whole files. For tasks that need a complete file read, do several targeted searches to assemble the picture, or ask Jeanette to paste the file directly.
 
-Read `docs/build_practices.md` early in the session if you haven't already. It contains the patterns you should follow for this work — especially "Confirm before fix" (verify the bug is real before changing code), "Show before build" (Jeanette sees the change before deployment), and "Don't let two instances edit the same file in parallel" (which applies particularly to docs that other instances might be editing).
+What's currently synced:
 
-Jeanette will share `start_claudette.sh` directly into the conversation when you need it for item 9. The other code files needed should already be in your starting context via the project sync.
+- The full `docs/` folder — architecture documentation, briefs, work queue, fragility scan, project history, build practices, glossary, terminal commands, condensing, memory files, sitting with, maintenance, cold start, backup chain, and the setup folder.
+- The four main code files: `server.py`, `retrieval.py`, `memory_writer.py`, `claudette_interface_connected.html`.
+
+Search examples for this session:
+
+- `project_knowledge_search("memory_writer call_memory_writer max_tokens")` — returns the relevant chunk for item 6.
+- `project_knowledge_search("Tailscale dependency")` — returns architecture and glossary entries about the dependency, plus the work queue entry.
+- `project_knowledge_search("server.py startup binding")` — returns the startup section of server.py for item 9.
+
+For files not in the sync (`start_claudette.sh`, anything outside the four synced code files), Jeanette will paste them directly into the conversation when you need them. Don't attempt `web_fetch` on GitHub URLs — that path is unreliable; see `build_practices.md`.
+
+Read `build_practices.md` early in the session via search if you haven't already. It contains the patterns you should follow for this work — especially "Confirm before fix" (verify the bug is real before changing code), "Show before build" (Jeanette sees the change before deployment), and "Don't let two instances edit the same file in parallel" (which applies particularly to docs that other instances might be editing).
 
 ---
 
@@ -64,11 +72,13 @@ This is investigative work with a documentation deliverable. The work has two ph
 2. server.py starts fine but the interface can't reach it because the interface is configured to use a Tailscale-routed address rather than `localhost`.
 3. Something else in the network configuration depends on Tailscale being active.
 
-Don't assume one of these is right. Read the code carefully and find out which (if any) is the actual mechanism. Files to read:
+Don't assume one of these is right. Read the code carefully and find out which (if any) is the actual mechanism. Files to read, and how to read them:
 
-- `start_claudette.sh` — Jeanette will share this. The startup script may explicitly depend on Tailscale or may not.
-- `server.py` — startup section, especially anything around binding addresses, port selection, host configuration.
-- `claudette_interface_connected.html` — how it connects to the server. What URL or address does it use?
+- `start_claudette.sh` — Jeanette will paste this directly into the conversation. Not in the project sync.
+- `server.py` startup section — use targeted searches like `project_knowledge_search("server.py app.run host port")` or `project_knowledge_search("Flask startup binding")` to find the relevant chunks. If chunks don't quite fit together coherently, ask Jeanette to paste the startup section directly.
+- `claudette_interface_connected.html` — how it connects to the server. Search for `project_knowledge_search("interface fetch URL connection")` or similar to find the connection logic. Same approach: ask for direct paste if chunks aren't enough.
+
+Search returns chunks rather than whole files. For investigative work like this where you're trying to understand a flow across several files, search-based reading can miss context. If you find yourself uncertain whether a chunk is the whole story, ask Jeanette to paste the file directly rather than guessing.
 
 The diagnosis you're looking for is concrete: "the interface uses `[specific address]` rather than `localhost`, and that address is provided by Tailscale" or "server.py at line N tries to bind to `[specific address]` which requires Tailscale" or whatever the actual mechanism turns out to be. Not abstract — specific.
 

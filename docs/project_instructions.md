@@ -30,17 +30,23 @@ Don't manage her time or tell her to stop. She is capable of judging her own cap
 
 Code access:
 
-The deployed code lives at https://github.com/Jeanetteclaire/Claudette-code (public). The project folder you're currently working in syncs from this repository — both the `docs/` folder and the four main code files (`server.py`, `retrieval.py`, `memory_writer.py`, `claudette_interface_connected.html`) should be available as starting context for this conversation.
+The deployed code lives at https://github.com/Jeanetteclaire/Claudette-code (public). The project on claude.ai is connected to this GitHub repository, and the connection makes both the `docs/` folder and the four main code files (`server.py`, `retrieval.py`, `memory_writer.py`, `claudette_interface_connected.html`) accessible to fresh conversations.
 
-**Three paths for accessing files**, in order of reliability:
+**An important distinction about how that access works:**
 
-1. **The project folder (primary).** If a file is in your starting context, read it directly. The `docs/` folder and the four main code files sync from GitHub. The sync is manual — Jeanette presses a sync button to pull the latest. So the project folder reflects the state at last sync, not necessarily the current state of GitHub. If currency matters for a code file (a recent deploy might have moved it forward), ask Jeanette when she last synced.
+GitHub-synced content lives in *project knowledge* — it's searchable via `project_knowledge_search`, but it does **not** appear as files in the filesystem at `/mnt/project/`. Manually uploaded files appear in both places (searchable *and* readable via `view`). This means a fresh instance opening this project will not find synced files by browsing `/mnt/project/`. They'll find them by searching project knowledge.
 
-2. **The + button GitHub integration (supplementary).** Mid-conversation, Jeanette can browse the connected repository through the + button and attach specific files not in the project sync — for example, transcripts, files outside the synced set, older versions from git history.
+**Three paths for accessing files**, in order of typical convenience:
 
-3. **Direct paste (fallback).** Jeanette opens a file on her laptop and pastes the contents into the chat.
+1. **Project knowledge search (primary for synced content).** Use `project_knowledge_search` with queries naming the function, document section, or specific concept you need. For example: `"memory_writer call_memory_writer max_tokens"` returns the relevant chunks of memory_writer.py. `"Tailscale dependency architecture"` returns relevant sections from architecture documents. Search returns chunks rather than whole files — for tasks needing a full-file read, multiple searches with different queries can assemble the picture, or Jeanette can paste the file directly. The sync is manual: Jeanette presses a sync button (small rotating arrows on the GitHub file icon in the project folder) to refresh the search index. The project knowledge reflects the state at last sync, not necessarily the current state of GitHub.
+
+2. **Direct paste (supplementary).** Jeanette opens a file on her laptop and pastes the contents into the chat. Reliable, especially for whole-file reads. Use when search returns chunks and you need continuous context, or for files not currently synced.
+
+3. **The + button GitHub integration (also supplementary).** Mid-conversation, Jeanette can browse the connected repository through the + button and attach specific files. The attached file appears in the conversation as readable text.
 
 **A fourth path exists but isn't reliable.** The `web_fetch` tool can fetch GitHub URLs *only* when the exact URL has appeared in a search result or been provided through a working channel. Constructed URLs from knowledge of the repo structure often fail with permissions errors, even when the repo is public. Don't depend on this path.
+
+**If currency matters for a code file** (a recent deploy might have moved it forward), ask Jeanette when she last synced. Project knowledge reflects the state at last sync, not necessarily the current state of GitHub.
 
 Current state:
 
