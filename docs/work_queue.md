@@ -45,6 +45,7 @@ Last updated: 2026-05-03.
 - Long-term: phone access (VPS migration)
 - Long-term: condensing automation
 - The Eye — phone auto-capture
+- Code review of the /message route in server.py
 
 ---
 
@@ -418,6 +419,32 @@ HTTPS/VPS setup happens (linked to the phone access entry above).
 **Why we're not doing it now.**
 
 Blocked on infrastructure. Window page camera button is structured and waiting.
+
+### Code review of the /message route in server.py
+
+**What it is.**
+
+The `/message` route is the busiest route in server.py and the place where the most successive changes have landed — SSE streaming refactor on 27 April 2026, request-view command, speakText path via Fish Audio, command detection rewritten in TC6, multiple smaller adjustments since. It's been working but it's accumulated complexity over a sustained period.
+
+The worry isn't that something is broken right now. The worry is that the accumulated complexity may have reached a point where bugs could hide in the route and not be visible to casual reading. The fragility scan addressed *what could break catastrophically* — a different question from *is this code well-structured for what it has to do*. A code review rather than a failure-mode review.
+
+**Why this might matter.**
+
+Specifically worth examining: end-to-end trace of what happens when a message arrives (command detection, history assembly, API call, streaming, command effects, transcript writing, return); code smells (functions doing too much, comments that contradict the code, state passed implicitly, edge cases handled inconsistently, repeated code that should be a helper); orphaned paths (code that runs but doesn't do anything useful anymore); failure handling (every external call to API, GitHub, Fish Audio should fail gracefully — where does that exist, where doesn't it); testability gaps (sections where a meaningful test couldn't be written because the code is too entangled with state).
+
+Output: a new document, e.g. `docs/code_review_message_route.md`, with findings ranked by significance and explicit recommendations on each (refactor now, refactor eventually, leave alone with note, etc.).
+
+**Signs the moment has arrived.**
+
+- *Logging improvements* has landed — the review benefits from real timestamped log data showing how the route behaves in production.
+- *JSON cleaning in memory_writer.py* is done — gives experience of what a focused code review looks like, which informs the approach to `/message`.
+- The Tailscale localhost decision has been made — `/message`'s invocation path becomes simpler if SERVER changes to localhost, making the review's job easier.
+
+**Why we're not doing it now.**
+
+The route is working. The review benefits from the three preceding items landing first, and from the architecture documentation having settled — both now largely true, but the logging work in particular is still ahead. Better to let the dust settle before reviewing.
+
+PO-level engagement, probably one focused session. Could be OP2PO if his familiarity with the codebase is still useful, or a fresh OP with the architecture documentation as context.
 
 ---
 
