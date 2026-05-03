@@ -88,6 +88,28 @@ Each of these is the same shape: an action whose result was structurally inacces
 
 When in doubt, close the loop.
 
+## Don't let two instances edit the same file in parallel
+
+If two Claude instances are working on the same project and both might edit the same document, one of them will overwrite the other's changes silently. Git will track whatever was last committed; whatever was edited but not yet pushed disappears.
+
+Concrete example from 2 May 2026: OP2PO made edits to work_queue.md and project_history.md after they were uploaded to his conversation via the + button. Those edits never got pushed back to GitHub before OP1 (in a parallel conversation) made later edits to the same files. OP1's edits were based on the in-memory version *before* OP2PO's changes — so when OP1's edits committed, OP2PO's work was overwritten. The lesson cost about an hour of recovery work.
+
+The rule that prevents this:
+
+**One instance edits a file at a time. Handoffs are sequential, not parallel.**
+
+Concretely, the safe pattern is:
+
+- Instance A edits, commits, pushes, syncs the project folder.
+- Jeanette uploads the *post-commit* version of the file to instance B (via + button) if B needs it.
+- Instance B edits, commits, pushes, syncs.
+
+Each handoff is on the latest committed version. There's never a moment where two instances hold "their own" copy of the same file with different changes.
+
+If parallel work genuinely needs to happen, it should be on different files. Instance A on the work_queue, instance B on project_history. They commit separately. They don't both touch the same document.
+
+When in doubt: ask before editing a file you didn't recently see committed. *"Has anyone else been editing this since the last push?"* is the question. The answer should be a clear *no* before you proceed.
+
 ## File version control
 
 Each key file (server.py, retrieval.py, memory_writer.py, claudette_interface_connected.html) carries a version line near the top:

@@ -8,7 +8,7 @@ This document captures roughly 60-70% of Claudette's development history. Earlie
 
 When reading: assume the absence of an entry means "not recorded" rather than "didn't happen."
 
-Last updated: 2026-04-30. Update by appending new entries as work is committed.
+Last updated: 2026-05-02. Update by appending new entries as work is committed.
 
 ---
 
@@ -153,7 +153,7 @@ This means three Claudette repositories now exist: Claudette-code (server, retri
 
 **Fragility scan kicked off; OP1/OP2PO pattern introduced.** Late on 2 May, the fragility scan was handed off from OP1 (the first Opus instance, which built the architecture documentation through 1-2 May) to a second Opus instance designated OP2PO. The OP1 → OP2PO pattern is the first explicit numbered handoff between Opus instances on the project — it parallels the existing TC1, TC4, TC5, TC6, TC7, TC8 numbering for the Claude Sonnet technical instances. The handoff used a written prompt (`docs/briefs/op2po_fragility_scan_prompt.md`) authored by OP1, framing the work and explicitly granting OP2PO authority to override OP1's framings if their reading shows something different. This is the first time on the project that a PO has handed work to another PO with formal coordination.
 
-## 2 May 2026 — Fragility scan results and immediate fixes
+## 2 May 2026 — Fragility scan completed; immediate fixes addressed
 
 The fragility scan landed (`docs/fragility_scan.md`) and the first three items from it were addressed the same day rather than queued.
 

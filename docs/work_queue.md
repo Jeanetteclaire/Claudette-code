@@ -33,7 +33,6 @@ Last updated: 2026-05-02.
 - Fix credit warning false positive
 - Diagnose Tailscale dependency
 - Raise memory writer max_tokens cap to 64000
-- Back up plist to repo with install procedure
 
 **PO design work**
 - Memory writer redesign (library + withholding)
@@ -255,9 +254,9 @@ Three possible causes worth investigating:
 
 A TC can probably resolve this in a single session by reading start_claudette.sh, server.py's startup logging, and the interface's connection logic. Once understood, the documentation in architecture_companion.md and glossary.md should be updated with the actual mechanism (currently both note the empirical fact but flag the mechanism as unknown).
 
-Low complexity. Worth doing because "we know it depends on Tailscale but not why" is a kind of fragility — if Tailscale's behaviour changes or it becomes unavailable, you'd want to know what to expect. Priority elevated by the fragility scan on 2 May 2026 — an unmapped single point of failure is more dangerous than a mapped one.
+Low complexity. Worth doing because "we know it depends on Tailscale but not why" is a kind of fragility — if Tailscale's behaviour changes or it becomes unavailable, you'd want to know what to expect.
 
-server.py and possibly the HTML interface in scope. Single session.
+server.py and possibly the HTML interface in scope. Single session. Priority elevated by the fragility scan on 2 May 2026 — an unmapped single point of failure is more dangerous than a mapped one.
 
 ### Raise memory writer max_tokens cap to 64000
 
@@ -266,14 +265,6 @@ The memory writer in `memory_writer.py` currently uses `max_tokens=32000`. Sonne
 Why this matters: the cap has fired multiple times in production. Jeanette manages it via the segmented session indicator on the interface, stopping at around 80% of full. The indicator becomes less accurate as memory files grow — the input takes more of the budget, leaving less headroom for output than the indicator implies. Raising to 64000 doesn't fix the structural issue (which lives in the memory writer redesign brief) but it removes an active operational constraint Jeanette is currently doing system work to mitigate.
 
 `memory_writer.py` only in scope. Single TC session, low complexity. From the fragility scan, item 6.
-
-### Back up plist to repo with install procedure
-
-The plist file at `~/Library/LaunchAgents/com.claudette.server.plist` controls Claudette's autostart at login. It lives outside the Claudette folder, isn't in git, and the architecture companion describes its contents in prose without including a copy of the file itself. If lost or corrupted, recreation requires reconstructing the XML from the prose description.
-
-Two small steps. Copy the current plist into the Claudette-code repo as `docs/com.claudette.server.plist.example` — a versioned reference copy that can be restored from. Document the install procedure (`cp` to LaunchAgents, `launchctl load`, `launchctl start`) in a short doc beside it. The cold-start recovery procedure OP1 is writing will reference this.
-
-Cost: ten minutes, mostly running `cp` and committing. Single TC session at most. From the fragility scan, item 10.
 
 ---
 
