@@ -110,6 +110,36 @@ If parallel work genuinely needs to happen, it should be on different files. Ins
 
 When in doubt: ask before editing a file you didn't recently see committed. *"Has anyone else been editing this since the last push?"* is the question. The answer should be a clear *no* before you proceed.
 
+## After another instance edits a file, every other instance's copy is stale
+
+A direct consequence of the parallel-edits rule, worth naming separately because it dictates how *subsequent* edits should be approached.
+
+The moment an instance pushes a file change, every other instance's in-memory or in-context copy of that file is now wrong. They're holding what was true *before* the edit. A later edit by a different instance, made against that stale copy, will silently overwrite the earlier change — exactly the failure mode the parallel-edits rule prevents.
+
+The fix isn't to remember which files have been edited and by whom. It's structural:
+
+**Before any instance edits a file, that instance must be holding the current state.** If they're not certain they have the current state, they refresh first — by reading the current GitHub version directly, or by Jeanette pasting it via the + button, or by `project_knowledge_search` after a recent sync.
+
+**The staleness check is one question:** *"Did I last see this file committed before any other instance might have touched it?"* If yes, refresh first.
+
+This applies even within a single working session. If TC9 spent the morning editing work_queue.md and pushed at noon, and an OP wants to edit work_queue.md in the afternoon, the OP's copy from earlier this morning is stale — even if the OP read it right before TC9 started. The relevant timestamp is *the most recent push to GitHub*, not when an instance last looked at the file.
+
+## Whoever does the work owns the documentation update for that work
+
+A simpler, cheaper version of an editor-instance model.
+
+When an instance solves a problem — TC fixes a bug, PO completes a design, OP runs a fragility scan — that instance is best positioned to update the relevant documentation. They have full context for what was done, why, and what surprises came up along the way. They're also already in the loop and don't have to be brought up to speed.
+
+Concretely: if TC9 fixes item 6 and diagnoses item 9, TC9 writes the project_history entry, retires the work_queue entries, and updates architecture_companion.md and glossary.md if those need changes. All in the same session, atomic with the work itself. No handoff to a different instance.
+
+The principle:
+
+**Don't hand documentation tasks to a different instance unless absolutely necessary.** Each handoff introduces a staleness gap and a coordination overhead. Better for one instance to land both the work and the documentation than for two instances to coordinate.
+
+Exceptions are rare but real. If the documentation work needs editorial judgment that the work-doing instance shouldn't make alone — e.g., reorganising a document that has spine drawn from Jeanette's own framing — that's worth a separate editorial pass. But for *recording* the work and updating maintained reference documents, the work-doer is the right author.
+
+This rule emerged from observing what was already happening in early May 2026: the cleanest sessions had the work and documentation landing together. The session that generated yesterday's parallel-edits incident had the documentation work spread across two instances. The pattern that worked got formalised; the pattern that didn't became the lesson.
+
 ## File version control
 
 Each key file (server.py, retrieval.py, memory_writer.py, claudette_interface_connected.html) carries a version line near the top:
@@ -147,6 +177,20 @@ For documentation, this rarely matters — docs change slowly. For code files, t
 **The clean check:** if currency matters for a code file, ask Jeanette when she last synced. If she synced recently and hasn't deployed code changes since, the project version is current. If a deploy has happened since the last sync, the project version may be behind.
 
 **The standing habit:** sync the project after each code deployment. Pair the two actions. Deploy → sync. That keeps the staleness window small enough to be ignorable for most work.
+
+## Files downloaded from claude.ai unzip flat
+
+A small operational reality worth knowing about, because it has caused at least one botched commit.
+
+When claude.ai produces multiple files for download (typically when an instance has updated several documents at once), they arrive as a zip. Unzipping that zip on macOS produces a folder called `files/` that contains all the documents at the top level — flat, regardless of where those documents live in the destination repository structure.
+
+So a download containing edits to `memory_writer.py`, `docs/architecture_companion.md`, and `docs/glossary.md` will unzip into `~/Downloads/files/` containing three files at the same level: `memory_writer.py`, `architecture_companion.md`, `glossary.md`. The `docs/` subfolder isn't preserved.
+
+**The implication for `mv` commands:** when an instance writes file-move commands for Jeanette to run, the source paths must be flat (`~/Downloads/files/glossary.md`), not nested (`~/Downloads/files/docs/glossary.md`). Nested paths fail silently with "No such file or directory" — `mv` reports the error but doesn't stop the rest of the command sequence, so subsequent `git add` and `git commit` proceed with whatever did get moved correctly. The result is a partial commit that looks successful at a glance.
+
+This bit on 3 May 2026 — TC9's commit landed only the code file because his `mv` commands used the nested-path form for the four document files, all of which silently failed. The fix was a follow-up commit with the correct paths.
+
+**The rule for instances:** when writing `mv` commands, always use `~/Downloads/files/[filename]` as the source, regardless of where the file goes in the destination. The destination uses the proper repo structure (`docs/`, `docs/briefs/`, etc.); the source is always flat.
 
 ## The manual retry command matters
 
