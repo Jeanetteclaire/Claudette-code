@@ -1,5 +1,5 @@
 """
-# Version: 2026-04-26-TC8-003
+# Version: 2026-05-03-TC9-001
 memory_writer.py
 
 Claudette — Memory Writer
@@ -379,7 +379,7 @@ def call_memory_writer(transcript: str, current_memory: dict, session_date: str,
         try:
             with client.messages.stream(
                 model=MODEL,
-                max_tokens=32000,
+                max_tokens=64000,
                 system=MEMORY_WRITER_PROMPT,
                 messages=[
                     {"role": "user", "content": user_message}
