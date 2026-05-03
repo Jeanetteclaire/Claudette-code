@@ -8,7 +8,7 @@ This document captures roughly 60-70% of Claudette's development history. Earlie
 
 When reading: assume the absence of an entry means "not recorded" rather than "didn't happen."
 
-Last updated: 2026-05-02. Update by appending new entries as work is committed.
+Last updated: 2026-05-03. Update by appending new entries as work is committed.
 
 ---
 
@@ -188,3 +188,11 @@ Worth noting for the fragility scan:
 **Phase numbering shifts.** Electron Phase 2 was originally something else, moved to 3 to prioritise voice. Phase boundaries are sometimes where coordination problems live; worth noting which boundaries shifted.
 
 These observations are starting points for the fragility scan, not conclusions.
+
+## 3 May 2026 — Fragility scan items 6 and 9 (TC9)
+
+Post-fragility-scan cleanup session. Two items from the immediate jobs queue addressed.
+
+**Memory writer max_tokens cap raised to 64000:** `call_memory_writer()` in `memory_writer.py` had `max_tokens=32000`, a stale value from an earlier Sonnet version. The model's actual maximum output is 64000. The cap had fired in production multiple times, causing JSON truncation and retry. One-line change: `max_tokens=32000` → `max_tokens=64000`. Nothing else touched.
+
+**Tailscale dependency diagnosed:** The mechanism was unknown before this session. Investigation found that `claudette_interface_connected.html` has a hardcoded Tailscale IP in its SERVER constant (`var SERVER = 'http://100.89.230.113:5001'`). All interface API calls go to that address. When Tailscale is off, the address is unreachable — hence the "server not running" banner. server.py itself starts and runs normally on `localhost:5001` regardless of Tailscale. The Electron health check uses localhost and is unaffected. The dependency is incidental: changing the SERVER constant to `localhost` would remove it for local-only use, at the cost of losing access from other Tailscale-networked devices. Decision on whether to make that change deferred. `architecture_companion.md` and `glossary.md` updated to reflect the actual mechanism.

@@ -2,7 +2,7 @@
 
 This document accompanies `architecture_map.svg`. The diagram shows the shape; this text explains what each piece is, what flows where, and what it means when something breaks. Read alongside the diagram, not in place of it.
 
-Last updated: 2026-04-30. Update this whenever the system changes in a way the diagram or these descriptions no longer reflect.
+Last updated: 2026-05-03. Update this whenever the system changes in a way the diagram or these descriptions no longer reflect.
 
 ---
 
@@ -86,7 +86,11 @@ The diagram `launch_chain.svg` shows this flow visually with the annotations of 
 
 **Why this matters.** Most of the time, the launch chain is invisible. You log in, Claudette is running, you use her. But when something goes wrong with how she starts — fails to start, starts but doesn't accept connections, starts but logs nothing — the chain is where the fault has to be. Having the chain mapped means you can think systematically about where in those four layers the problem lies, instead of guessing.
 
-**Runtime requirement: Tailscale.** Claudette requires Tailscale to be running. If Tailscale is off, the interface shows a "server not running" banner regardless of whether server.py is actually running. The mechanism isn't fully understood — see *work_queue.md* under "Diagnose Tailscale dependency." Operationally: if you see the red banner, check Tailscale before anything else.
+**Interface configuration dependency: Tailscale.** The deployed interface has a hardcoded Tailscale IP address: `var SERVER = 'http://100.89.230.113:5001'` in `claudette_interface_connected.html`. Every API call the interface makes — session start, messages, voice, library, camera frames — goes to that address. When Tailscale is off, the `100.x.x.x` address is unreachable because the Tailscale virtual network interface is down. The interface shows "server not running."
+
+server.py itself is unaffected: it binds to `0.0.0.0:5001` and runs normally whether or not Tailscale is running. The Electron app's health check (`localhost:5001/status`) also uses localhost and succeeds. Only the interface's API calls depend on Tailscale — and only because of the hardcoded IP.
+
+The dependency is a configuration choice, not an architectural requirement. The `SERVER` constant could be changed to `'http://localhost:5001'`, which would remove the Tailscale requirement for local-only use. Whether to make that change is a separate decision — it would also remove the ability to reach Claudette from other Tailscale-networked devices (phone, iPad). Operationally: if you see the red banner, check Tailscale before anything else.
 
 ---
 

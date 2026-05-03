@@ -10,7 +10,7 @@ Items move between sections as conditions change. A future consideration whose t
 
 Order within each section is roughly by priority but not rigidly. Use judgement.
 
-Last updated: 2026-05-02.
+Last updated: 2026-05-03.
 
 ---
 
@@ -31,8 +31,6 @@ Last updated: 2026-05-02.
 - Request-view consuming full turn
 - Investigate 1 May 2026 memory writer timeout
 - Fix credit warning false positive
-- Diagnose Tailscale dependency
-- Raise memory writer max_tokens cap to 64000
 
 **PO design work**
 - Memory writer redesign (library + withholding)
@@ -241,30 +239,6 @@ The math is wrong. Either the threshold check is broken, the calculation of rema
 Not breaking anything — the warning is purely informational. But false alarms erode the value of an alarm system. Worth diagnosing and fixing once it's prioritised.
 
 memory_writer.py in scope. Likely a single function or condition. Low complexity.
-
-### Diagnose Tailscale dependency
-
-Empirical observation: Claudette won't run if Tailscale is off. The interface shows a "server not running" banner. Operationally known and worked around (turn Tailscale on, restart) but the mechanism isn't understood.
-
-Three possible causes worth investigating:
-
-- server.py genuinely fails to start without Tailscale because some startup step depends on a Tailscale-related address or port.
-- server.py starts fine but the interface can't reach it because the interface is configured to use a Tailscale-routed address rather than `localhost`.
-- Something else in the network configuration depends on Tailscale being active.
-
-A TC can probably resolve this in a single session by reading start_claudette.sh, server.py's startup logging, and the interface's connection logic. Once understood, the documentation in architecture_companion.md and glossary.md should be updated with the actual mechanism (currently both note the empirical fact but flag the mechanism as unknown).
-
-Low complexity. Worth doing because "we know it depends on Tailscale but not why" is a kind of fragility — if Tailscale's behaviour changes or it becomes unavailable, you'd want to know what to expect.
-
-server.py and possibly the HTML interface in scope. Single session. Priority elevated by the fragility scan on 2 May 2026 — an unmapped single point of failure is more dangerous than a mapped one.
-
-### Raise memory writer max_tokens cap to 64000
-
-The memory writer in `memory_writer.py` currently uses `max_tokens=32000`. Sonnet's actual maximum output is 64000. Raising the cap is a one-line change in `call_memory_writer()` that gives immediate breathing room before the structural memory writer redesign work happens.
-
-Why this matters: the cap has fired multiple times in production. Jeanette manages it via the segmented session indicator on the interface, stopping at around 80% of full. The indicator becomes less accurate as memory files grow — the input takes more of the budget, leaving less headroom for output than the indicator implies. Raising to 64000 doesn't fix the structural issue (which lives in the memory writer redesign brief) but it removes an active operational constraint Jeanette is currently doing system work to mitigate.
-
-`memory_writer.py` only in scope. Single TC session, low complexity. From the fragility scan, item 6.
 
 ---
 
