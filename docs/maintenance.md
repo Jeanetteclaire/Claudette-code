@@ -4,7 +4,7 @@ Ongoing care for Claudette's system. Not the work queue (which holds one-off job
 
 Two categories of maintenance: **rituals** that run on a schedule, and **practices** that pair with specific actions you're already doing. Both matter; the rituals tend to drift if forgotten, the practices tend to be skipped if not paired with their trigger.
 
-Last updated: 2026-05-02. Update when new maintenance needs surface.
+Last updated: 2026-05-04. Update when new maintenance needs surface.
 
 ---
 
@@ -49,13 +49,16 @@ Visit `console.anthropic.com/settings/billing`. Confirm the auto-reload is confi
 
 ```
 tail -100 ~/Claudette/claudette_server.log
+tail -50 ~/Claudette/claudette_server_error.log
 ```
 
-Skim for unexpected lines. You're not auditing every line — just confirming nothing weird has surfaced. Memory writer runs should look healthy (the now-familiar pattern of connecting to GitHub, testing API key, processing, writing). Library cycles should fire on schedule. No persistent errors.
+Skim both. You're not auditing every line — just confirming nothing weird has surfaced. Memory writer runs should look healthy (the now-familiar pattern of connecting to GitHub, testing API key, processing, writing). Library cycles should fire on schedule. No persistent errors.
+
+As of TC10 (4 May 2026), the error log contains only ERROR-level lines. If it's short, the system is healthy. If it has lines, they're real and worth reading — no grep required. Previously this file was full of routine 200 OK request lines; that is no longer the case.
 
 **What to look for specifically:**
-- Lines containing `ERROR` in capitals — these are explicit errors and should be rare.
-- `Library: cycle error` — a library cycle that failed to complete.
+- Any line in the error log — each one is a real error, not noise.
+- `Library: cycle error` in the combined log — a library cycle that failed to complete.
 - Anthropic API errors or warnings in memory writer or library blocks.
 - `WARNING: Unknown file key` — silent memory-file mismatch (see fragility scan).
 - Anything that doesn't match a familiar pattern.

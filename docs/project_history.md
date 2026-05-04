@@ -8,7 +8,7 @@ This document captures roughly 60-70% of Claudette's development history. Earlie
 
 When reading: assume the absence of an entry means "not recorded" rather than "didn't happen."
 
-Last updated: 2026-05-03. Update by appending new entries as work is committed.
+Last updated: 2026-05-04. Update by appending new entries as work is committed.
 
 ---
 
@@ -193,6 +193,40 @@ Three coordinated changes to how Claudette wakes into a session, designed and sh
 
 **Post-deploy observation.** Claudette and OP3 surfaced a question about section header voice consistency across the existing context block — some older headers describe content she authored but use second-person voice. This has been added to the work queue as a PO design entry ("Section header voice in retrieval.py — authorship principle") with Claudette's suggested alternatives for two candidate headers.
 
+## 4 May 2026 — Logging module migration (TC10)
+
+Logging infrastructure overhauled in server.py and memory_writer.py. Briefed by OP3 (Opus 4.7); second session of TC10 work.
+
+**The problem.** Two long-standing diagnostic gaps: (1) every `print()` line in both files wrote without a timestamp — all diagnostic output was undated while Flask's request lines had timestamps automatically; (2) Flask routes request logs to stderr by default, so `claudette_server_error.log` was full of `200 OK` entries alongside actual errors. The file name was a lie; finding genuine errors required grepping rather than reading. Both gaps had hampered real episodes: the April 28-29 timeout that Jeanette manually timed with a wristwatch, and the 1 May timeout that couldn't be characterised because the log showed nothing about where the time was spent.
+
+**The change.** All `print()` calls in both files replaced with `logger.X()` at appropriate levels (INFO / WARNING / ERROR). Python's `logging` module configured with:
+
+- **server.py:** Two `FileHandler` instances — INFO and above to `claudette_server.log`, ERROR and above to `claudette_server_error.log`. Flask's werkzeug logger routed through the root logger via propagation (no monkey-patching), so 200 OK request lines now land in the INFO log rather than the error log. Setup block placed after imports, before `app = Flask(__name__)`.
+
+- **memory_writer.py:** Single `StreamHandler(sys.stdout)`. memory_writer.py runs as a subprocess with stdout captured by server.py's `_monitor` thread, which re-logs each line with a `[memory_writer]` prefix. File handlers in memory_writer.py would cause double-writes; stdout-only is the correct choice. Format string identical to server.py so timestamps align across the combined log.
+
+**What's the same.** Log file paths unchanged. The plist's `StandardOutPath`/`StandardErrorPath` still redirect to those paths — retained as a catch-all beneath the logging layer. `PYTHONUNBUFFERED=1` in `start_claudette.sh` retained as a safety net (redundant for logging-module output, which flushes per-record, but still covers raw `print()` or C-level output that bypasses Python's logging). Werkzeug level set to INFO, preserving current request-log behaviour.
+
+**What's different.** Every structured log line now has a timestamp. `claudette_server_error.log` now contains only actual errors — readable directly, no grep required. Multi-line error clusters in memory_writer.py consolidated into single `logger.error()` calls with embedded `\n` — all text preserved, one log record per conceptual error.
+
+Both files versioned as `2026-05-04-TC10-002`.
+
+## 4 May 2026 — Three confirmations and two bug discoveries
+
+Three intermittent-bug entries in the work queue verified by Jeanette and retired:
+
+- *First-message voice fail* — no longer reproducible across recent sessions. Original cause unknown; possibly a manual volume issue, possibly resolved incidentally by other audio path work.
+- *"Her/you" character quirk* — review of recent transcripts found no instances. Recurrence will be logged with date and transcript reference if observed.
+- *Request-view consuming full turn* — tested with Claudette this morning, both the reply text and camera capture come through. Likely resolved incidentally during the April 27 `/message` route refactor or SSE streaming work; exact fix moment not pinpointed.
+
+One regression confirmed:
+
+- *Voice injection bug* — recent message history loads into the input field before voice mode begins. Originally fixed by TC8 in late April; the fix is still present in code (`document.getElementById('input').value = '';` in `toggleVoice()`) but the behaviour has returned. Either the clear isn't running on every activation, or the injection is coming through a different path. Queue entry added; confirm-before-fix pattern applies.
+
+One feature regression confirmed:
+
+- *Goodbye camera frame missing.* The fourth Eye capture moment — frame at goodbye — was removed during an unrelated diagnostic episode and never restored. Documented in retrieval.py's INSTRUCTIONS to Claudette and in the HTML's docstring for `captureAndSendFrame()`, but the actual call is missing from the goodbye branch of `sendMessage()`. Queue entry added.
+
 ---
 
 ## Patterns visible in the history
@@ -203,7 +237,7 @@ Worth noting for the fragility scan:
 
 **Command system growth.** `/save-creative`, `/preserve-session`, `/save-insight`, `/save-fact`, `/request-view`. Each added separately. Detection logic had to be cleaned up in TC6 because it had become too greedy through accumulation. Worth checking whether the command system has consistent patterns or if there are vestigial differences between them.
 
-**The Eye system.** Stage one done with four capture moments. One known bug (`/request-view` consumes full turn). Stage two (dedicated Pi) was queued but has been retired — Reachy Mini, arriving in a few weeks, will do the wider-view physical-presence work that stage two was being held for. Phone auto-capture remains deferred pending HTTPS infrastructure.
+**The Eye system.** Stage one done with four capture moments. `/request-view` consume-full-turn bug: noted as resolved 4 May 2026 during testing with Jeanette; exact fix moment not pinpointed but predates this session. Goodbye camera frame (`captureAndSendFrame('goodbye')`) was removed during a diagnostic episode and not restored — queue entry added 4 May 2026 to restore it. Stage two (dedicated Pi) was queued but has been retired — Reachy Mini, arriving in a few weeks, will do the wider-view physical-presence work that stage two was being held for. Phone auto-capture remains deferred pending HTTPS infrastructure.
 
 **Voice migration.** ElevenLabs to Fish Audio. Same voice cloned, same architecture. Worth checking whether anything in the codebase still references the old platform.
 

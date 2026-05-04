@@ -1,5 +1,5 @@
 """
-# Version: 2026-05-03-TC9-001
+# Version: 2026-05-04-TC10-002
 memory_writer.py
 
 Claudette — Memory Writer
@@ -18,6 +18,7 @@ Requirements:
 import anthropic
 import argparse
 import json
+import logging
 import os
 import re
 import sys
@@ -28,6 +29,24 @@ from github import Auth, Github, GithubException
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / ".env")
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+# memory_writer.py runs as a subprocess of server.py with stdout captured.
+# Logging to stdout lets server.py's _monitor thread re-log lines with the
+# [memory_writer] prefix into the main log files. No file handlers here.
+
+_log_formatter = logging.Formatter(
+    fmt="%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+_stdout_handler = logging.StreamHandler(sys.stdout)
+_stdout_handler.setFormatter(_log_formatter)
+
+logging.root.setLevel(logging.INFO)
+logging.root.addHandler(_stdout_handler)
+
+logger = logging.getLogger(__name__)
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 
@@ -228,13 +247,13 @@ def write_file(repo, path: str, content: str, commit_message: str):
 
 def read_current_memory(repo: object) -> dict:
     """Read all current memory files from GitHub before the Claude call."""
-    print("Reading current memory files from GitHub...")
+    logger.info("Reading current memory files from GitHub...")
     current = {}
     for key, path in MEMORY_FILES.items():
         content = read_file(repo, path)
         current[key] = content
         status = "found" if content else "empty/new"
-        print(f"  {path} — {status}")
+        logger.info(f"  {path} — {status}")
     return current
 
 
@@ -294,7 +313,7 @@ def test_api_key() -> bool:
       - Credits are in claude.ai not console.anthropic.com (separate billing)
       - Key has been revoked
     """
-    print("Testing API key with minimal call...")
+    logger.info("Testing API key with minimal call...")
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     try:
         response = client.messages.create(
@@ -302,26 +321,27 @@ def test_api_key() -> bool:
             max_tokens=10,
             messages=[{"role": "user", "content": "Hi"}]
         )
-        print(f"  API key OK — model responded ({response.usage.input_tokens} input tokens used)\n")
+        logger.info(f"  API key OK — model responded ({response.usage.input_tokens} input tokens used)")
         return True
     except anthropic.AuthenticationError as e:
-        print(f"\nERROR: API key is invalid or revoked.")
-        print(f"  {e}")
+        logger.error(f"ERROR: API key is invalid or revoked.\n  {e}")
         return False
     except anthropic.PermissionDeniedError as e:
-        print(f"\nERROR: Credit balance too low or billing not configured.")
-        print(f"  {e}")
-        print(f"\n  Things to check:")
-        print(f"  1. Credits must be at console.anthropic.com/settings/billing")
-        print(f"     (not claude.ai — these are separate billing systems)")
-        print(f"  2. If credits were added after this key was created,")
-        print(f"     generate a fresh API key and update your .env file.")
-        print(f"  3. Confirm the balance is showing at console.anthropic.com")
-        print(f"     under Settings -> Billing, not just in claude.ai.")
+        logger.error(
+            f"ERROR: Credit balance too low or billing not configured.\n"
+            f"  {e}\n"
+            f"\n"
+            f"  Things to check:\n"
+            f"  1. Credits must be at console.anthropic.com/settings/billing\n"
+            f"     (not claude.ai — these are separate billing systems)\n"
+            f"  2. If credits were added after this key was created,\n"
+            f"     generate a fresh API key and update your .env file.\n"
+            f"  3. Confirm the balance is showing at console.anthropic.com\n"
+            f"     under Settings -> Billing, not just in claude.ai."
+        )
         return False
     except Exception as e:
-        print(f"\nERROR: Unexpected error during API test.")
-        print(f"  {type(e).__name__}: {e}")
+        logger.error(f"ERROR: Unexpected error during API test.\n  {type(e).__name__}: {e}")
         return False
 
 
@@ -343,11 +363,13 @@ def check_low_credit_warning(response) -> None:
         estimated_calls_remaining = LOW_CREDIT_WARNING_USD / call_cost if call_cost > 0 else 999
 
         if estimated_calls_remaining < 10:
-            print(f"\n\u26a0\ufe0f  Credit warning.")
-            print(f"   Estimated fewer than 10 memory writer calls remaining")
-            print(f"   before the ${LOW_CREDIT_WARNING_USD:.0f} warning threshold.")
-            print(f"   Check your actual balance and top up if needed:")
-            print(f"   console.anthropic.com/settings/billing")
+            logger.warning(
+                f"⚠️  Credit warning.\n"
+                f"   Estimated fewer than 10 memory writer calls remaining\n"
+                f"   before the ${LOW_CREDIT_WARNING_USD:.0f} warning threshold.\n"
+                f"   Check your actual balance and top up if needed:\n"
+                f"   console.anthropic.com/settings/billing"
+            )
     except Exception:
         # Never let the warning check interrupt the main flow
         pass
@@ -363,7 +385,7 @@ def call_memory_writer(transcript: str, current_memory: dict, session_date: str,
         then hourly until 24 hours have elapsed.
     transcript_path is used only in the failure message for the manual retry command.
     """
-    print("Calling Claude API — memory writer...")
+    logger.info("Calling Claude API — memory writer...")
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -391,16 +413,17 @@ def call_memory_writer(transcript: str, current_memory: dict, session_date: str,
 
         except anthropic.PermissionDeniedError:
             # Credits exhausted — retrying won't help
-            print("\n⚠️  Credit balance too low — the memory writer could not complete.")
-            print("   Claudette's memory from this session has not been written.")
-            print("   Top up at: console.anthropic.com/settings/billing")
-            print("   Then re-run the memory writer with the same transcript file.")
+            logger.error(
+                "⚠️  Credit balance too low — the memory writer could not complete.\n"
+                "   Claudette's memory from this session has not been written.\n"
+                "   Top up at: console.anthropic.com/settings/billing\n"
+                "   Then re-run the memory writer with the same transcript file."
+            )
             sys.exit(1)
 
         except anthropic.AuthenticationError as e:
             # Wrong or revoked key — retrying won't help
-            print(f"\n⚠️  Authentication error — API key may be invalid or revoked.")
-            print(f"   {e}")
+            logger.error(f"⚠️  Authentication error — API key may be invalid or revoked.\n   {e}")
             sys.exit(1)
 
         except Exception as e:
@@ -409,31 +432,35 @@ def call_memory_writer(transcript: str, current_memory: dict, session_date: str,
             if not retry:
                 # Automatic path — fast fail after RETRY_FAST_ATTEMPTS
                 if attempt >= RETRY_FAST_ATTEMPTS:
-                    print(f"\n⚠️  Memory writer failed after {attempt} attempt(s): {e}")
-                    print(f"   Transcript is safe locally.")
-                    print(f"   To retry manually when the API recovers:")
                     pos_flag = f" --start-position {start_position}" if start_position else ""
                     retry_cmd = f"python memory_writer.py --transcript {transcript_path} --date {session_date}{pos_flag} --retry"
-                    print(f"   {retry_cmd}")
+                    logger.error(
+                        f"⚠️  Memory writer failed after {attempt} attempt(s): {e}\n"
+                        f"   Transcript is safe locally.\n"
+                        f"   To retry manually when the API recovers:\n"
+                        f"   {retry_cmd}"
+                    )
                     sys.exit(1)
                 delay = RETRY_FAST_DELAY
             else:
                 # Manual path — full backoff, stop after 24 hours
                 if elapsed >= RETRY_MAX_SECONDS:
-                    print(f"\n⚠️  Memory writer gave up after 24 hours: {e}")
-                    print(f"   Transcript is safe locally.")
-                    print(f"   Retry manually when the API recovers:")
                     pos_flag = f" --start-position {start_position}" if start_position else ""
                     retry_cmd = f"python memory_writer.py --transcript {transcript_path} --date {session_date}{pos_flag} --retry"
-                    print(f"   {retry_cmd}")
+                    logger.error(
+                        f"⚠️  Memory writer gave up after 24 hours: {e}\n"
+                        f"   Transcript is safe locally.\n"
+                        f"   Retry manually when the API recovers:\n"
+                        f"   {retry_cmd}"
+                    )
                     sys.exit(1)
                 idx = attempt - 1
                 delay = RETRY_DELAYS_SECONDS[idx] if idx < len(RETRY_DELAYS_SECONDS) else RETRY_HOURLY_INTERVAL
 
             mins = delay // 60
             wait_str = f"{mins} minute(s)" if mins else "immediately"
-            print(f"\n⚠️  API error (attempt {attempt}): {type(e).__name__}: {e}")
-            print(f"   Retrying {wait_str}...")
+            logger.warning(f"⚠️  API error (attempt {attempt}): {type(e).__name__}: {e}")
+            logger.info(f"   Retrying {wait_str}...")
             if delay > 0:
                 time.sleep(delay)
 
@@ -457,9 +484,11 @@ def call_memory_writer(transcript: str, current_memory: dict, session_date: str,
     try:
         return json.loads(raw)
     except json.JSONDecodeError as e:
-        print(f"\nERROR: Could not parse memory writer response as JSON.")
-        print(f"Parse error: {e}")
-        print(f"\nRaw response:\n{raw}")
+        logger.error(
+            f"ERROR: Could not parse memory writer response as JSON.\n"
+            f"Parse error: {e}\n"
+            f"\nRaw response:\n{raw}"
+        )
         sys.exit(1)
 
 
@@ -472,12 +501,12 @@ def write_memory_updates(repo, result: dict, session_date: str) -> int:
     session_content = result.get("session", "")
 
     if session_content:
-        print(f"  Writing session file: {session_path}")
+        logger.info(f"  Writing session file: {session_path}")
         # Temporary commit message — will be updated once we know the total
         write_file(repo, session_path, session_content, "temp")
         files_updated += 1
     else:
-        print("  WARNING: No session content returned — skipping session file.")
+        logger.warning("  WARNING: No session content returned — skipping session file.")
 
     # Write any other files the writer flagged
     updates = result.get("updates", {})
@@ -486,9 +515,9 @@ def write_memory_updates(repo, result: dict, session_date: str) -> int:
             continue
         path = MEMORY_FILES.get(key)
         if not path:
-            print(f"  WARNING: Unknown file key '{key}' — skipping.")
+            logger.warning(f"  WARNING: Unknown file key '{key}' — skipping.")
             continue
-        print(f"  Updating: {path}")
+        logger.info(f"  Updating: {path}")
         write_file(repo, path, content, "temp")
         files_updated += 1
 
@@ -502,7 +531,7 @@ def rewrite_commits_with_final_message(repo, result: dict, session_date: str, fi
     This function re-writes all changed files with the final commit message.
     """
     commit_message = f"Session {session_date} — {files_updated} files updated"
-    print(f"\nCommit message: '{commit_message}'")
+    logger.info(f"Commit message: '{commit_message}'")
 
     # Session file
     session_path = f"memory/experiences/sessions/{session_date}.md"
@@ -557,13 +586,12 @@ def main():
     if not GITHUB_TOKEN:
         missing.append("GITHUB_MEMORY_TOKEN")
     if missing:
-        print(f"ERROR: Missing environment variables: {', '.join(missing)}")
-        print("Create a .env file with these values. See .env.example.")
+        logger.error(f"ERROR: Missing environment variables: {', '.join(missing)}\nCreate a .env file with these values. See .env.example.")
         sys.exit(1)
 
     # Read transcript
     if not os.path.exists(args.transcript):
-        print(f"ERROR: Transcript file not found: {args.transcript}")
+        logger.error(f"ERROR: Transcript file not found: {args.transcript}")
         sys.exit(1)
 
     with open(args.transcript, "r", encoding="utf-8") as f:
@@ -572,21 +600,20 @@ def main():
         transcript = f.read().strip()
 
     if not transcript:
-        print("ERROR: Transcript file is empty.")
+        logger.error("ERROR: Transcript file is empty.")
         sys.exit(1)
 
-    print(f"\nClaudette — Memory Writer")
-    print(f"Session date: {args.date}")
-    print(f"Transcript: {args.transcript} ({len(transcript)} characters)\n")
+    logger.info("Claudette — Memory Writer")
+    logger.info(f"Session date: {args.date}")
+    logger.info(f"Transcript: {args.transcript} ({len(transcript)} characters)")
 
     # Connect to GitHub
-    print("Connecting to GitHub...")
+    logger.info("Connecting to GitHub...")
     try:
         repo = get_repo(GITHUB_TOKEN, GITHUB_REPO_NAME)
-        print(f"  Connected to: {repo.full_name}\n")
+        logger.info(f"  Connected to: {repo.full_name}")
     except GithubException as e:
-        print(f"ERROR: Could not connect to GitHub repository '{GITHUB_REPO_NAME}'.")
-        print(f"  {e}")
+        logger.error(f"ERROR: Could not connect to GitHub repository '{GITHUB_REPO_NAME}'.\n  {e}")
         sys.exit(1)
 
     # Test API key before doing anything else
@@ -595,31 +622,30 @@ def main():
 
     # Read current memory files
     current_memory = read_current_memory(repo)
-    print()
 
     # Call the memory writer
     result = call_memory_writer(transcript, current_memory, args.date,
                                 retry=args.retry, transcript_path=args.transcript,
                                 start_position=args.start_position)
-    print("  Memory writer returned successfully.\n")
+    logger.info("  Memory writer returned successfully.")
 
     # Count how many files will be updated
     files_updated = 1 if result.get("session") else 0  # session file
     updates = result.get("updates", {})
     files_updated += sum(1 for v in updates.values() if v is not None)
 
-    print(f"Files to update: {files_updated}")
-    print("Writing to GitHub...\n")
+    logger.info(f"Files to update: {files_updated}")
+    logger.info("Writing to GitHub...")
 
     # Write with final commit message (single pass — correct message from the start)
     commit_message = f"Session {args.date} — {files_updated} files updated"
-    print(f"Commit message: '{commit_message}'\n")
+    logger.info(f"Commit message: '{commit_message}'")
 
     # Session file
     session_path = f"memory/experiences/sessions/{args.date}.md"
     session_content = result.get("session", "")
     if session_content:
-        print(f"  Writing: {session_path}")
+        logger.info(f"  Writing: {session_path}")
         write_file(repo, session_path, session_content, commit_message)
 
     # Other files
@@ -628,7 +654,7 @@ def main():
             continue
         path = MEMORY_FILES.get(key)
         if not path:
-            print(f"  WARNING: Unknown key '{key}' — skipping.")
+            logger.warning(f"  WARNING: Unknown key '{key}' — skipping.")
             continue
 
         # Belt-and-braces guard for facts.md:
@@ -638,17 +664,19 @@ def main():
         if key == "facts":
             existing_facts = current_memory.get("facts", "")
             if existing_facts and len(content) < len(existing_facts) * 0.8:
-                print(f"  WARNING: facts.md write skipped — model output ({len(content)} chars) "
-                      f"is shorter than existing file ({len(existing_facts)} chars). "
-                      f"Existing bullets may have been dropped. Inspect and update manually if needed.")
+                logger.warning(
+                    f"  WARNING: facts.md write skipped — model output ({len(content)} chars) "
+                    f"is shorter than existing file ({len(existing_facts)} chars). "
+                    f"Existing bullets may have been dropped. Inspect and update manually if needed."
+                )
                 continue
 
-        print(f"  Writing: {path}")
+        logger.info(f"  Writing: {path}")
         write_file(repo, path, content, commit_message)
 
-    print(f"\nDone. {files_updated} files updated.")
-    print(f"Repository: https://github.com/{repo.full_name}")
-    print(f"Commit: Session {args.date} — {files_updated} files updated")
+    logger.info(f"Done. {files_updated} files updated.")
+    logger.info(f"Repository: https://github.com/{repo.full_name}")
+    logger.info(f"Commit: Session {args.date} — {files_updated} files updated")
 
     # Update last_processed.json so manual runs keep the position in sync.
     # server.py reads this file to know where each session starts —
@@ -669,9 +697,9 @@ def main():
         data[args.date] = end_position
         with open(pos_file, "w", encoding="utf-8") as f:
             json.dump(data, f)
-        print(f"  Position saved: {args.date} → {end_position}")
+        logger.info(f"  Position saved: {args.date} → {end_position}")
     except Exception as e:
-        print(f"  Warning: Could not update last_processed.json: {e}")
+        logger.warning(f"  Warning: Could not update last_processed.json: {e}")
 
 
 if __name__ == "__main__":

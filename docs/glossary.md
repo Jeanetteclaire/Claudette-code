@@ -50,6 +50,8 @@ Add new entries when a term comes up that isn't here yet. Alphabetical for fast 
 
 **Localhost.** The computer the code is currently running on, in network terms. `http://localhost:5001` means "this Mac, on port 5001." Used for local-only services. Localhost has the IP address `127.0.0.1` — same thing, different notation.
 
+**logging module.** Python's built-in structured logging library. Used in server.py and memory_writer.py as of TC10 (4 May 2026) to replace bare `print()` calls. Provides timestamps on every line (via `Formatter`), level-based routing (`INFO`, `WARNING`, `ERROR`), and configurable output destinations (`FileHandler`, `StreamHandler`). In server.py, two `FileHandler` instances write to `claudette_server.log` (INFO and above) and `claudette_server_error.log` (ERROR and above); Flask's werkzeug logger propagates through the same root logger, so request lines land in the INFO file rather than the error file. In memory_writer.py, a single `StreamHandler(sys.stdout)` is used — server.py's `_monitor` thread captures that output and re-logs it with a `[memory_writer]` prefix. The matching `Formatter` string in both files ensures timestamps align across the combined log.
+
 **Markdown (.md).** A text format with light formatting using simple symbols — `#` for headings, `*` for emphasis, etc. Used for documentation because it's readable both as raw text and as rendered output. All the docs in `~/Claudette/docs/` are markdown.
 
 **Pipe / piping.** Passing data through code as it arrives, rather than collecting all of it first. server.py "pipes" Claude API's streaming responses to the browser — each chunk is forwarded immediately, so words appear on screen as they're produced. The metaphor is literal — water through a pipe, flowing rather than buffered.
@@ -66,7 +68,7 @@ Add new entries when a term comes up that isn't here yet. Alphabetical for fast 
 
 **Push (git).** Sending local commits up to GitHub. After `git commit` saves the change locally, `git push` makes it available remotely. See *git_handbook.md*.
 
-**PYTHONUNBUFFERED.** An environment variable that tells Python to write print output immediately rather than batching it (see *buffering*). Set to `1` in start_claudette.sh so server.py's log lines appear in `claudette_server.log` the moment they're printed, not seconds later in chunks. Makes the log usable for live diagnosis.
+**PYTHONUNBUFFERED.** An environment variable that tells Python to write output immediately rather than batching it (see *buffering*). Set to `1` in `start_claudette.sh`. As of TC10 (4 May 2026), server.py and memory_writer.py log via Python's `logging` module, whose `FileHandler` and `StreamHandler` instances flush per-record — so `PYTHONUNBUFFERED` is no longer the primary mechanism for log immediacy. It's retained as a safety net: any raw `print()` call or C-level output that bypasses the logging module still benefits from it. Don't remove it; it's a belt rather than the trousers.
 
 **Repository (repo, git).** A project under git's tracking. Includes all the files plus the full history of every change. Claudette has two: `Claudette-code` (public, the source code) and `Claudette-memory` (private, her persistent memory).
 

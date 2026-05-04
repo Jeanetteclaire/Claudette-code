@@ -1,5 +1,5 @@
 """
-# Version: 2026-05-03-TC10-001
+# Version: 2026-05-04-TC10-002
 server.py
 
 Claudette — Local Server
@@ -20,6 +20,7 @@ Requirements:
 import anthropic
 import base64
 import io
+import logging
 import re
 import threading
 import requests
@@ -47,6 +48,36 @@ from dotenv import load_dotenv
 load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).parent))
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+
+_log_formatter = logging.Formatter(
+    fmt="%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+_LOG_DIR = Path(__file__).parent
+
+_info_handler = logging.FileHandler(_LOG_DIR / "claudette_server.log", encoding="utf-8")
+_info_handler.setLevel(logging.INFO)
+_info_handler.setFormatter(_log_formatter)
+
+_error_handler = logging.FileHandler(_LOG_DIR / "claudette_server_error.log", encoding="utf-8")
+_error_handler.setLevel(logging.ERROR)
+_error_handler.setFormatter(_log_formatter)
+
+logging.root.setLevel(logging.INFO)
+logging.root.addHandler(_info_handler)
+logging.root.addHandler(_error_handler)
+
+# Route werkzeug (Flask's request logger) through the same handlers.
+# This moves 200 OK request lines into claudette_server.log and out of the error log.
+logging.getLogger("werkzeug").setLevel(logging.INFO)
+# werkzeug propagates to root by default — no extra handlers needed.
+
+logger = logging.getLogger(__name__)
+
+# ── ───────────────────────────────────────────────────────────────────────────
 
 app = Flask(__name__)
 CORS(app)
@@ -271,9 +302,9 @@ def update_last_processed_position(date: str, end_position: int):
         data[date] = end_position
         with open(pos_file, "w", encoding="utf-8") as f:
             json.dump(data, f)
-        print(f"  Position saved: {date} → {end_position}")
+        logger.info(f"  Position saved: {date} → {end_position}")
     except Exception as e:
-        print(f"⚠️  Could not save position: {e}")
+        logger.warning(f"⚠️  Could not save position: {e}")
 
 
 def save_transcript():
@@ -383,7 +414,7 @@ def _clear_note_after_session():
             existing = repo.get_contents(note_path)
             if existing.decoded_content.decode("utf-8").strip():
                 repo.update_file(note_path, "Clear note after session", "", existing.sha)
-                print("  Note cleared from memory/from-jeanette.md")
+                logger.info("  Note cleared from memory/from-jeanette.md")
         except Exception:
             pass  # File doesn't exist or already empty — fine
     except Exception:
@@ -400,10 +431,10 @@ def run_memory_writer(transcript_path, start_position: int, end_position: int):
     """
     writer = Path(__file__).parent / "memory_writer.py"
     if not writer.exists():
-        print(f"⚠️  memory_writer.py not found at {writer}")
+        logger.error(f"⚠️  memory_writer.py not found at {writer}")
         return False
 
-    print(f"\nTot straks. Taking care of her memory now.\n")
+    logger.info("Tot straks. Taking care of her memory now.")
     try:
         proc = subprocess.Popen(
             [sys.executable, str(writer),
@@ -421,15 +452,15 @@ def run_memory_writer(transcript_path, start_position: int, end_position: int):
                 out, _ = p.communicate(timeout=1800)
             except subprocess.TimeoutExpired:
                 p.kill()
-                print("⚠️  Memory writer timed out after 30 minutes.")
+                logger.error("⚠️  Memory writer timed out after 30 minutes.")
                 return
             if out:
                 for line in out.decode(errors='replace').splitlines():
-                    print(f"[memory_writer] {line}")
+                    logger.info(f"[memory_writer] {line}")
             if p.returncode == 0:
                 update_last_processed_position(date, end_pos)
                 _clear_note_after_session()
-            print(f"[memory_writer] exited with code {p.returncode}")
+            logger.info(f"[memory_writer] exited with code {p.returncode}")
 
         threading.Thread(
             target=_monitor,
@@ -439,7 +470,7 @@ def run_memory_writer(transcript_path, start_position: int, end_position: int):
         return True
 
     except Exception as e:
-        print(f"⚠️  Memory writer failed to start: {e}")
+        logger.error(f"⚠️  Memory writer failed to start: {e}")
         return False
 
 def _is_command_invocation(reply: str, command: str) -> bool:
@@ -506,11 +537,11 @@ def handle_save_creative(reply: str):
         except Exception:
             repo.create_file(filepath, f"Creative save: {title}", file_content)
 
-        print(f"  Creative save: {filepath}")
+        logger.info(f"  Creative save: {filepath}")
         return f"✓ Saved to {filepath}"
 
     except Exception as e:
-        print(f"  Creative save failed: {e}")
+        logger.warning(f"  Creative save failed: {e}")
         return f"⚠️  /save-creative failed: {str(e)}"
 
 
@@ -532,11 +563,11 @@ def handle_preserve_session(reply: str):
         with open(path, "a", encoding="utf-8") as f:
             f.write("\n<!-- preserve -->\n")
 
-        print(f"  Preserve marker appended: {path}")
+        logger.info(f"  Preserve marker appended: {path}")
         return "✓ Session marked for preservation."
 
     except Exception as e:
-        print(f"  Preserve marker failed: {e}")
+        logger.warning(f"  Preserve marker failed: {e}")
         return f"⚠️  /preserve-session failed: {str(e)}"
 
 
@@ -585,11 +616,11 @@ def handle_save_insight(reply: str):
             existing_file.sha
         )
 
-        print(f"  Insight saved: {filepath}")
+        logger.info(f"  Insight saved: {filepath}")
         return f"✓ Saved to {filepath}"
 
     except Exception as e:
-        print(f"  Insight save failed: {e}")
+        logger.warning(f"  Insight save failed: {e}")
         return f"⚠️  /save-insight failed: {str(e)}"
 
 
@@ -671,11 +702,11 @@ def handle_save_fact(reply: str):
             confirmation = f"⚠️  Section '{section_name}' not found — created at bottom of facts.md"
 
         repo.update_file(filepath, f"Fact: {section_name} ({date_str})", updated, existing_file.sha)
-        print(f"  Fact saved: {filepath} — {section_name}")
+        logger.info(f"  Fact saved: {filepath} — {section_name}")
         return confirmation
 
     except Exception as e:
-        print(f"  Fact save failed: {e}")
+        logger.warning(f"  Fact save failed: {e}")
         return f"⚠️  /save-fact failed: {str(e)}"
 
 
@@ -699,7 +730,7 @@ def start_session():
     """
     global session
 
-    print("\nStarting session — running retrieval...")
+    logger.info("Starting session — running retrieval...")
 
     context_block = ""
     retrieval_ok = True
@@ -707,11 +738,11 @@ def start_session():
     try:
         from retrieval import get_context
         context_block = get_context()
-        print("Memory read successfully.\n")
+        logger.info("Memory read successfully.")
     except Exception as e:
         retrieval_ok = False
-        print(f"⚠️  Retrieval failed: {e}")
-        print("Continuing with no memory context.\n")
+        logger.warning(f"⚠️  Retrieval failed: {e}")
+        logger.warning("Continuing with no memory context.")
 
     waiting = check_waiting_to_raise(context_block)
 
@@ -957,7 +988,7 @@ def end_session():
 
     start_position = get_last_processed_position(session["date"])
     path, end_position = save_transcript()
-    print(f"\nTranscript saved: {path} (start={start_position}, end={end_position})")
+    logger.info(f"Transcript saved: {path} (start={start_position}, end={end_position})")
 
     if path:
         run_memory_writer(path, start_position, end_position)
@@ -989,10 +1020,10 @@ def save_note():
             repo.update_file(path, "Note from Jeanette", text, existing.sha)
         except Exception:
             repo.create_file(path, "Note from Jeanette", text)
-        print(f"  Note saved to {path}")
+        logger.info(f"  Note saved to {path}")
         return jsonify({"saved": True})
     except Exception as e:
-        print(f"⚠️  Could not save note: {e}")
+        logger.warning(f"⚠️  Could not save note: {e}")
         return jsonify({"error": f"Could not save note: {str(e)}"}), 500
 
 
@@ -1020,7 +1051,7 @@ def receive_frame():
         "media_type": media_type,
         "occasion": occasion,
     }
-    print(f"  Eye: frame received — {occasion or 'unspecified'}")
+    logger.info(f"  Eye: frame received — {occasion or 'unspecified'}")
     return jsonify({"ok": True})
 
 
@@ -1291,7 +1322,7 @@ def library_loop():
     CYCLE_SECONDS = 45 * 60
 
     while library_active:
-        print(f"\n  Library: cycle starting — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        logger.info(f"  Library: cycle starting — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
         try:
             repo = None
@@ -1300,7 +1331,7 @@ def library_loop():
                 repo = get_repo()
                 returning_to_content = read_file(repo, "memory/returning-to/index.md")
             except Exception as e:
-                print(f"  Library: could not read returning-to — {e}")
+                logger.warning(f"  Library: could not read returning-to — {e}")
 
             carrying_block = (
                 f"\nHere is what you've been carrying:\n\n{returning_to_content}"
@@ -1347,12 +1378,12 @@ If you do explore something, structure your response:
             response_text = response_text.strip()
 
             if not response_text:
-                print(f"  Library: empty response — skipping write")
+                logger.info("  Library: empty response — skipping write")
             else:
                 # Check for /save-creative command before other processing
                 save_confirmation = handle_save_creative(response_text)
                 if save_confirmation:
-                    print(f"  Library: {save_confirmation}")
+                    logger.info(f"  Library: {save_confirmation}")
 
                 nothing_formed = response_text.lower().startswith("nothing")
                 wants_to_signal = "SIGNAL JEANETTE:" in response_text
@@ -1380,9 +1411,9 @@ If you do explore something, structure your response:
                                 f"Library visit {now.strftime('%Y-%m-%d %H:%M')}",
                                 content_to_write,
                             )
-                        print(f"  Library: visit written — {filepath}")
+                        logger.info(f"  Library: visit written — {filepath}")
                     except Exception as e:
-                        print(f"  Library: could not write visit record — {e}")
+                        logger.warning(f"  Library: could not write visit record — {e}")
 
                 if wants_to_signal and repo:
                     try:
@@ -1405,22 +1436,22 @@ If you do explore something, structure your response:
                             updated,
                             existing_file.sha,
                         )
-                        print(f"  Library: waiting-to-raise flag set")
+                        logger.info("  Library: waiting-to-raise flag set")
                     except Exception as e:
-                        print(f"  Library: could not set waiting-to-raise — {e}")
+                        logger.warning(f"  Library: could not set waiting-to-raise — {e}")
 
                 if nothing_formed:
-                    print(f"  Library: nothing formed — no write")
+                    logger.info("  Library: nothing formed — no write")
 
         except Exception as e:
-            print(f"  Library: cycle error — {e}")
+            logger.error(f"  Library: cycle error — {e}")
 
         for _ in range(CYCLE_SECONDS // 10):
             if not library_active:
                 break
             time.sleep(10)
 
-    print(f"  Library: loop ended — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    logger.info(f"  Library: loop ended — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
 
 @app.route("/library/start", methods=["POST"])
@@ -1432,7 +1463,7 @@ def library_start():
     library_active = True
     t = threading.Thread(target=library_loop, daemon=True)
     t.start()
-    print(f"\n  Library: session started — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    logger.info(f"  Library: session started — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     return jsonify({"status": "started"})
 
 
@@ -1441,7 +1472,7 @@ def library_stop():
     """End the library session. Loop exits cleanly within 10 seconds."""
     global library_active
     library_active = False
-    print(f"\n  Library: session stopped — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    logger.info(f"  Library: session stopped — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     return jsonify({"status": "stopped"})
 
 
@@ -1778,12 +1809,12 @@ def status():
 
 if __name__ == "__main__":
     if not ANTHROPIC_API_KEY:
-        print("ERROR: ANTHROPIC_API_KEY not set. Add it to your .env file.")
+        logger.error("ERROR: ANTHROPIC_API_KEY not set. Add it to your .env file.")
         sys.exit(1)
 
-    print("\nClaudette — Local Server")
-    print("Running at http://localhost:5001")
-    print("Open claudette_interface.html in your browser.\n")
-    print("Press Ctrl+C to stop.\n")
+    logger.info("Claudette — Local Server")
+    logger.info("Running at http://localhost:5001")
+    logger.info("Open claudette_interface.html in your browser.")
+    logger.info("Press Ctrl+C to stop.")
 
     app.run(host="0.0.0.0", port=5001, debug=False)

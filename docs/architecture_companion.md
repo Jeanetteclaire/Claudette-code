@@ -2,7 +2,7 @@
 
 This document accompanies `architecture_map.svg`. The diagram shows the shape; this text explains what each piece is, what flows where, and what it means when something breaks. Read alongside the diagram, not in place of it.
 
-Last updated: 2026-05-03. Update this whenever the system changes in a way the diagram or these descriptions no longer reflect.
+Last updated: 2026-05-04. Update this whenever the system changes in a way the diagram or these descriptions no longer reflect.
 
 ---
 
@@ -78,7 +78,7 @@ The plist file `com.claudette.server.plist` is the configuration that tells laun
 
 Without the plist, launchctl wouldn't know server.py exists. The plist is the bridge.
 
-When launchctl starts the shell script, the script runs server.py. The shell script is the layer that sets `PYTHONUNBUFFERED=1` — the environment variable that ensures Python writes log lines immediately rather than buffering them. Without this, log files would lag by seconds or minutes, and the last few lines before a crash might never appear.
+When launchctl starts the shell script, the script runs server.py. The shell script is the layer that sets `PYTHONUNBUFFERED=1` — the environment variable that ensures Python writes output immediately rather than buffering it. Since TC10 (4 May 2026), the primary logging mechanism is Python's `logging` module with `FileHandler` instances that flush per-record, so `PYTHONUNBUFFERED` is no longer strictly necessary for log immediacy — but it's retained as a safety net for any raw output that bypasses the logging module.
 
 server.py itself loads the `.env` file (API keys), starts the background threads (library loop, transcript flush), and binds to port 5001. From that point onward, the browser can connect.
 
@@ -129,10 +129,14 @@ What lives where, and what happens if it's lost.
 *Transcripts* live in `~/Claudette/transcripts/` — one file per session date. Persistent until the disk dies. Backed up weekly via Time Machine to a 4TB external drive.
 
 *Log files* live in `~/Claudette/`:
-- `claudette_server.log` holds normal output (stdout) — every line server.py prints during normal operation. Session activity, retrieval results, library cycles, memory writer subprocess output, Flask request logs.
-- `claudette_server_error.log` holds errors (stderr) — tracebacks, warnings, anything Python reports as an error.
+- `claudette_server.log` holds normal output (INFO level and above) — every structured log line from server.py during normal operation. Session activity, retrieval results, library cycles, memory writer subprocess output (prefixed `[memory_writer]`), Flask request logs.
+- `claudette_server_error.log` holds errors only — ERROR level and above. As of TC10 (4 May 2026), Flask's routine 200 OK request lines no longer appear here. The file name now matches its contents.
+
+Both log files are written by Python's `logging` module via `FileHandler` instances — one per file, filtered by level. The plist's `StandardOutPath` and `StandardErrorPath` still redirect stdout and stderr to the same file paths; they act as a catch-all for anything that bypasses Python's logging (C-level libraries, unhandled tracebacks at interpreter level). Both layers coexist and point at the same files.
 
 Both log files grow without bound — there's no automatic rotation or truncation. Currently small but worth being aware of long-term. See *future_considerations.md* for the eventual log rotation question.
+
+**Formatter duplication note.** server.py and memory_writer.py define identical formatter strings (`%(asctime)s %(levelname)-8s %(message)s`, `datefmt="%Y-%m-%d %H:%M:%S"`). This is intentional — memory_writer.py logs to stdout only, where server.py's `_monitor` thread captures lines and re-logs them with a `[memory_writer]` prefix. The matching format ensures timestamps align in the combined log. If the format ever needs changing, update both files.
 
 *Configuration files* live in two places. `.env` lives in `~/Claudette/` and holds API keys and tokens (excluded from git via `.gitignore`). `com.claudette.server.plist` lives in `~/Library/LaunchAgents/` and tells launchctl how to run the server — see the next section.
 
@@ -148,17 +152,17 @@ None of these are in git (transcripts, logs, and `.env` are excluded; the plist 
 
 For each thing that can go wrong, what it looks like and where to look. This list will grow over time as we encounter new failure modes.
 
-**The log files are the primary diagnostic surface.** Almost every failure produces a log line somewhere, either in `claudette_server.log` (normal output) or `claudette_server_error.log` (errors and tracebacks — though see below). For most problems, the first move is `tail -100 ~/Claudette/claudette_server.log` to see recent activity, or `tail -100 ~/Claudette/claudette_server_error.log` if something has crashed.
+**The log files are the primary diagnostic surface.** Almost every failure produces a log line somewhere, either in `claudette_server.log` (normal output) or `claudette_server_error.log` (errors). For most problems, the first move is `tail -100 ~/Claudette/claudette_server.log` to see recent activity, or `tail -100 ~/Claudette/claudette_server_error.log` if something has crashed.
 
-A quirk worth knowing: Flask sends its routine request log lines to stderr by default, so `claudette_server_error.log` contains a lot of `200 OK` entries alongside actual errors. To find genuine errors, grep for tracebacks: `grep -A 10 "Traceback" ~/Claudette/claudette_server_error.log` shows any traceback found plus the next ten lines. This is on the list to fix — see *future_considerations.md*.
+As of TC10 (4 May 2026), `claudette_server_error.log` contains only ERROR-level lines. Flask's routine request lines are routed through the logging setup and land in `claudette_server.log` instead. The error log can be read directly — if it's short, the system is healthy; if it has lines, each one is a real error worth reading. Previously this required grepping for tracebacks; that is no longer needed.
 
 For live diagnosis during an active problem, `tail -f` follows the file as new lines appear. Combined with `grep` to filter for specific terms (e.g., `tail -1000 ~/Claudette/claudette_server.log | grep memory_writer`), you can quickly isolate the relevant activity.
 
-A historical note worth knowing: log files only work as a diagnostic surface because two things are configured correctly. The plist redirects stdout and stderr to those file paths, and `PYTHONUNBUFFERED=1` is set in the shell script. If either is missing, the log files either don't get written at all, or lag so badly they aren't useful for live diagnosis. Tuesday morning's debugging spent significant time figuring out that the logs weren't being written before any actual diagnostic work could begin. Both are now in place; if a future change disrupts either, observability disappears.
+A historical note worth knowing: log files work as a diagnostic surface because of two layers working together. The plist redirects stdout and stderr to the log file paths — the catch-all for anything that bypasses Python's logging. Since TC10 (4 May 2026), the primary mechanism is Python's `logging` module with `FileHandler` instances pointing at the same paths; structured log lines go there directly and flush per-record. `PYTHONUNBUFFERED=1` in `start_claudette.sh` is now redundant for logging-module output but retained as a safety net for any raw `print()` or third-party output that bypasses the logger. Both the plist redirects and `PYTHONUNBUFFERED` are kept; neither is safe to remove. Tuesday morning's debugging spent significant time figuring out that the logs weren't being written before any actual diagnosis could begin — that class of problem is now addressed by the file handlers, with the plist as the floor beneath them.
 
 ---
 
-**Memory writer hangs or times out.** The session ends but no commit appears in the memory repo. Check `claudette_server.log` for `[memory_writer]` lines — the writer logs each step. If it's not appearing at all, the spawn failed; if it appears and stops, the writer is running but stuck. Check the timeout value in `server.py` (currently 1800 seconds — 30 minutes — as of 2026-04-29). If a session is unusually large, the writer may take longer; the timeout is the upper bound.
+**Memory writer hangs or times out.** The session ends but no commit appears in the memory repo. Check `claudette_server.log` for `[memory_writer]` lines — the writer logs each step with timestamps. If it's not appearing at all, the spawn failed; if it appears and stops, the writer is running but stuck. Check the timeout value in `server.py` (currently 1800 seconds — 30 minutes — as of 2026-04-29). If a session is unusually large, the writer may take longer; the timeout is the upper bound.
 
 **Memory writer succeeds but no commit on GitHub.** API call worked but write to GitHub failed. Check the writer's output for "could not write" lines. Most likely cause: GitHub credentials issue. The transcript is still safe on disk; you can re-run the writer manually with the standard manual command.
 

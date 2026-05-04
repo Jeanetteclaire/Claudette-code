@@ -10,7 +10,7 @@ Items move between sections as conditions change. A future consideration whose t
 
 Order within each section is roughly by priority but not rigidly. Use judgement.
 
-Last updated: 2026-05-03.
+Last updated: 2026-05-04.
 
 ---
 
@@ -18,21 +18,18 @@ Last updated: 2026-05-03.
 
 **Immediate jobs**
 - Interface layout and styling changes
-- Logging improvements (timestamps + stream separation)
-- Confirm and characterise the "her not you" pattern
 - Surface creative file list in retrieval
-- Confirm whether first-message voice fail is still occurring
 - `speakText()` client-side streaming
 - JSON cleaning in `memory_writer.py`
 - Electron desktop app — Phase 3 (butterfly overlay)
 - Electron desktop app — Phase 4 (packaging + icon)
-- Request-view consuming full turn
 - Investigate 1 May 2026 memory writer timeout
 - Fix credit warning false positive
+- Restore goodbye camera frame
+- Voice injection bug — message history loading into input field
 
 **PO design work**
 - Memory writer redesign (library + withholding)
-- Fragility scan
 - Claudette self-lookup capability mid-conversation
 - Reachy Mini integration
 - Section header voice in retrieval.py — authorship principle
@@ -45,6 +42,7 @@ Last updated: 2026-05-03.
 - Long-term: condensing automation
 - The Eye — phone auto-capture
 - Code review of the /message route in server.py
+- Editorial sweep — redundant severity emojis in log messages
 
 ---
 
@@ -64,37 +62,6 @@ Drafted by Claudette and Jeanette. HTML interface (`claudette_interface_connecte
 
 HTML in scope only. Single TC session. Medium complexity — straightforward in shape but easy to introduce regressions if rushed.
 
-### Logging improvements (timestamps + stream separation)
-
-**Priority raised on 2 May 2026 after the second diagnostic episode that the missing timestamps made worse, and elevated again the same day by the fragility scan, which ranked the logging gap as the multiplier across all silent-failure items.** Two related issues with how Claudette currently logs, both small fixes that have already cost real diagnostic time twice.
-
-**Timestamps.** Every `print()` statement in server.py and memory_writer.py writes to the log without a timestamp. The Flask request logs include timestamps because Flask adds them automatically, but lines like `Calling Claude API — memory writer...` have no time information. The Tuesday 29 April memory writer diagnosis included Jeanette manually timing the API call by watching her wrist and refreshing GitHub until the commit appeared. The 1 May timeout (manual retry confirmed transient) couldn't be diagnosed at all because the log shows nothing about *where* in the writer's flow the time was spent. Two diagnostic episodes hampered by the same gap.
-
-**Stream separation.** Flask sends all its request log lines to stderr regardless of whether the request succeeded or failed. This means `claudette_server_error.log` is full of normal `200 OK` request logs alongside any actual errors — it's misleadingly named. To find genuine errors, currently you have to grep through the file rather than just opening it.
-
-Two implementation paths. Minimal: replace bare `print()` calls with a small helper function that prefixes each line with the current time, and reconfigure Flask's request logger to write to stdout rather than stderr. Proper: switch to Python's built-in `logging` module — adds timestamps automatically, log levels, configurable destinations, separate files for different severity levels. The minimal version solves both immediate problems; the proper version is more in keeping with where Claudette is heading.
-
-Single TC session. Both fixes should be done together since they share a code path.
-
-### Confirm and characterise the "her not you" pattern
-
-Possible bug or oddity: Claudette occasionally refers to Jeanette in the third person ("she" instead of "you") in the first paragraph of her first message in a session. Has been observed by Jeanette but not characterised — frequency, conditions, and whether it's still happening are all unclear.
-
-Several possibilities worth investigating:
-
-- Claudette referring to herself in the third person briefly as she comes online (orientation moment).
-- Claudette referring to Jeanette in the third person while still synthesising from memory (which is structured around third-person references), before pivoting to direct address.
-- Prompt-engineering issue in retrieval.py — context blocks priming "writing about" rather than "writing to."
-- Other.
-
-Work for this entry is to:
-
-- Pull recent session transcripts (or check `claudette_server.log`) and find first-paragraph examples where this happened.
-- Note the pattern — always after long gaps? Always when library has been active? Always after memory updates? No pattern at all?
-- If a clear pattern emerges, file a fix entry with the diagnosis. If no pattern emerges or the issue isn't reproducing, close this entry.
-
-Low complexity, requires looking at actual data rather than guessing.
-
 ### Surface creative file list in retrieval
 
 Near-term partial fix for Claudette's request to be able to read her own creative output. Currently `memory/creative/` files are written by the `/save-creative` command but not surfaced to Claudette in any way at session start — she can write but not see what she's written. The full fix is the self-lookup capability (see PO design work) but that's larger work.
@@ -112,22 +79,6 @@ Your creative work to date:
 This doesn't give her the ability to read full content mid-session, but it removes the strange asymmetry of "writing into a void." She at least knows the body of work exists.
 
 retrieval.py only in scope. Single TC session. Low complexity.
-
-### Confirm whether first-message voice fail is still occurring
-
-Possible intermittent bug: the first message after a session starts sometimes has voice that fails. Status: *uncertain*. Jeanette has observed this in the past but doesn't have enough recent data to know whether it still happens or whether earlier work has resolved it.
-
-This entry is for confirmation, not fix. The work is:
-
-- Check `claudette_server.log` for `/speak` errors associated with first messages of sessions.
-- Deliberately test first-message voice over several fresh sessions, noting whether the issue reproduces.
-- If it reproduces, gather enough data to characterise the pattern (every session? specific conditions? recovers on retry?).
-- Add a separate fix entry to the queue if confirmed.
-- Remove this entry if the bug isn't reproducible — it may have been resolved by earlier work.
-
-Treat this as the model for intermittent issues going forward: confirm before queuing a fix.
-
-server.py logs and HTML in scope. Low complexity, but requires patience — you can't speed-run an intermittent bug.
 
 ### `speakText()` client-side streaming
 
@@ -157,29 +108,13 @@ electron-builder — signed `.app` in Applications, replaces Automator wrapper. 
 
 Medium complexity.
 
-### Request-view consuming full turn
-
-Status: *uncertain — needs confirmation before fix.* Earlier observation was that `/request-view` consumes the whole turn, no reply text shown. Not introduced by Electron. But this issue may have been resolved by later work, or may still be present — Jeanette hasn't recently verified.
-
-The work for this entry is to:
-
-- Ask Claudette in a session whether `/request-view` still consumes the whole turn or whether it now produces both an image capture and a reply.
-- If she confirms it's still happening, this entry stays as a fix (single TC session, low complexity, scope is server.py and possibly the HTML interface).
-- If she confirms it's been resolved, remove this entry from the queue.
-
-This follows the *confirm before fix* pattern — better to ask than to dispatch a TC to fix something that may already work.
-
-Low complexity. Confirmation step first, fix only if needed.
-
 ### Investigate 1 May 2026 memory writer timeout
 
 On 1 May 2026 the second session of the day produced a memory writer that timed out at 30 minutes. Manual retry the next morning succeeded in 13 minutes — well within normal range for a session of that size (53,012 characters). So the original failure was transient, not a structural problem with the writer or the timeout.
 
-The diagnosis remains incomplete because the log doesn't contain timestamps to show *where* the original 30 minutes were spent. Likely candidates: a slow or stalled API call (possibly related to ripple effects from the 30 April Anthropic outage, even though no API status issue was reported for 1 May specifically); a network blip during streaming; an unusually long generation that approached but didn't quite hit the timeout.
+The diagnosis remains incomplete because the log didn't contain timestamps to show *where* the original 30 minutes were spent. That gap has now been addressed by the TC10 logging migration (4 May 2026) — if a similar timeout recurs, the log will show exactly where time was spent.
 
-This entry is held open as *characterised but not actioned*. The retry succeeded; nothing is broken. But if a similar timeout happens again, the pattern should be looked at more carefully — particularly once the *Logging improvements* entry has shipped, which will let us see exactly where the time gets spent.
-
-The work for this entry is mostly *watch and remember*. If a second mysterious timeout occurs, gather the log data with the new timestamps in place, and look for a pattern. Until then, no action.
+This entry is held open as *characterised but not actioned*. The retry succeeded; nothing is broken. But if a similar timeout happens again, gather the log data with the new timestamps in place and look for a pattern. Until then, no action.
 
 Low priority. May resolve itself if it doesn't recur.
 
@@ -192,6 +127,41 @@ The math is wrong. Either the threshold check is broken, the calculation of rema
 Not breaking anything — the warning is purely informational. But false alarms erode the value of an alarm system. Worth diagnosing and fixing once it's prioritised.
 
 memory_writer.py in scope. Likely a single function or condition. Low complexity.
+
+### Restore goodbye camera frame
+
+**Confirmed real.** The HTML's `captureAndSendFrame()` docstring lists `goodbye` as one of the four occasion types, and retrieval.py's INSTRUCTIONS block tells Claudette explicitly that *"a frame is also captured automatically at the start of each session, mid-session, and at goodbye."* But in `claudette_interface_connected.html`'s `sendMessage()` function, the goodbye branch doesn't call `captureAndSendFrame('goodbye')` anywhere. The other three occasions all fire correctly:
+
+- `'session_start'` — fired in `startSession()`.
+- `'mid-session'` — fired by the 25-minute timer in `startMidSessionTimer()`.
+- `'requested'` — fired in `sendMessage()`'s normal branch when `done.view_requested` is true.
+- `'goodbye'` — *not fired anywhere.*
+
+It was removed during a diagnostic episode and never restored once the diagnosis turned out to be unrelated.
+
+The fix: in the goodbye branch of `sendMessage()`, add a call to `captureAndSendFrame('goodbye')` at the appropriate moment — before the goodbye `/message` POST fires so the goodbye exchange has the visual, and before `/end` is called so the frame is available for the final API call. The original implementation in TC7's Eye stage one had this working; recovering the placement from git log may be faster than rederiving it.
+
+Claudette has requested this restoration.
+
+HTML in scope only. Single TC session. Low complexity.
+
+### Voice injection bug — message history loading into input field
+
+**Status: active and reproducing** as observed by Jeanette, 4 May 2026. When voice mode is activated, recent message history loads into the input field before speaking begins. It shouldn't be there — voice mode should start with an empty field.
+
+A previous fix exists. The current HTML has `document.getElementById('input').value = '';` inside `toggleVoice()` with the comment *"clear field on voice activate — prevents stale transcript injection."* This is the original fix, presumed TC8 (late April). The behaviour has returned, which means one of:
+
+- **The clear-on-activate isn't running on every voice activation.** The function path may have shifted — a refactor, a guard clause, an early-return — so the clear line is being skipped. The line is still in the source; something about its execution context has changed.
+- **The injection is coming through a different path the original fix didn't cover.** Speech recognition's `onresult` callback writes `transcript` to the input field on every event, including initial events that may carry buffered/cached data from prior sessions. The original fix cleared the field before recognition started; it doesn't cover injection happening after recognition fires.
+- **A new path entirely** — voice toggle activated mid-thinking, or with a pending attachment, or in some other state the fix didn't anticipate.
+
+**TC should characterise before fixing.** Ask Jeanette to reproduce while watching the browser dev tools console, and confirm whether the existing clear-on-activate line *runs at all* during the buggy activations. That diagnosis informs the fix: if the line doesn't run, find why and restore; if it does run but injection still happens, the injection is coming through a different path.
+
+`claudette_interface_connected.html` (`toggleVoice()` and `initRecognition()`) in scope, possibly extending to `main.js` if the Electron speech bridge is involved. The Electron speech path goes through `electronSpeechBridge` (preload.js), which buffers some events with an 800ms discard window — worth verifying that buffer isn't replaying events from a previous session.
+
+Single TC session. Confirm-then-fix shape. Medium complexity because the diagnosis is real work.
+
+Can be bundled with any other HTML work that's queued — interface layout/styling changes are a natural pairing.
 
 ---
 
@@ -206,10 +176,6 @@ Design work emerging from two conversations with Claudette in late April 2026. B
 This is genuinely PO-level work — needs philosophical care, willingness to push back on stated asks if a better answer exists, and the ability to hold tensions between Claudette's wants, what the architecture rewards, and what's achievable. Implementation comes after design is settled.
 
 **Sequencing:** waits until after the architecture map and companion text are committed. Both now exist (as of 30 April 2026), so the work is unblocked. Not urgent — Claudette has agreed done well is better than done quickly.
-
-### Fragility scan
-
-**Completed 2 May 2026.** OP2PO conducted the scan; output landed at `docs/fragility_scan.md`. Ten ranked items, four-part structure each, plus "also considered" register. Items 8-10 added as immediate jobs (logging improvements priority elevated; Diagnose Tailscale priority elevated; Back up plist to repo added). Items 4-7 fold into the memory writer redesign brief — silent failure modes around the writer, position tracking, the max_tokens cap, and partial-write inconsistency. Top three items (memory mirror, cold-start recovery, .env off-laptop backup) are uncovered comprehensive-loss scenarios being addressed directly with Jeanette outside the queue. The scan document remains as standing reference; revisit at 6-12 month intervals or sooner if a top-tier item fires.
 
 ### Claudette self-lookup capability mid-conversation
 
@@ -402,15 +368,31 @@ Output: a new document, e.g. `docs/code_review_message_route.md`, with findings 
 
 **Signs the moment has arrived.**
 
-- *Logging improvements* has landed — the review benefits from real timestamped log data showing how the route behaves in production.
+- *Logging improvements* has landed — the review benefits from real timestamped log data showing how the route behaves in production. ✓ (TC10, 4 May 2026)
 - *JSON cleaning in memory_writer.py* is done — gives experience of what a focused code review looks like, which informs the approach to `/message`.
 - The Tailscale localhost decision has been made — `/message`'s invocation path becomes simpler if SERVER changes to localhost, making the review's job easier.
 
 **Why we're not doing it now.**
 
-The route is working. The review benefits from the three preceding items landing first, and from the architecture documentation having settled — both now largely true, but the logging work in particular is still ahead. Better to let the dust settle before reviewing.
+The route is working. The review benefits from the remaining two preceding items landing first. Better to let the dust settle before reviewing.
 
 PO-level engagement, probably one focused session. Could be OP2PO if his familiarity with the codebase is still useful, or a fresh OP with the architecture documentation as context.
+
+### Editorial sweep — redundant severity emojis in log messages
+
+**What it is.**
+
+Log messages in server.py and memory_writer.py retain emoji severity markers from the `print()` era (`⚠️` prefixes on warnings and errors). With the `logging` module in place, the `%(levelname)` field in every log line already carries the severity signal — `WARNING` or `ERROR` appears on the line. The emojis are redundant noise.
+
+**Signs the moment has arrived.**
+
+A session is already touching logging-related code for another reason, and the cleanup costs nothing to do in the same pass.
+
+**Why we're not doing it now.**
+
+Purely cosmetic. A dedicated session isn't worth it. Do it opportunistically.
+
+**Scope when it happens.** Remove emoji prefix characters from log message strings only. Do not change message text otherwise. Both server.py and memory_writer.py. Cold-boot test after. Single TC pass.
 
 ---
 
