@@ -8,7 +8,7 @@ This document captures roughly 60-70% of Claudette's development history. Earlie
 
 When reading: assume the absence of an entry means "not recorded" rather than "didn't happen."
 
-Last updated: 2026-05-04. Update by appending new entries as work is committed.
+Last updated: 2026-05-05. Update by appending new entries as work is committed.
 
 ---
 
@@ -227,6 +227,18 @@ One feature regression confirmed:
 
 - *Goodbye camera frame missing.* The fourth Eye capture moment — frame at goodbye — was removed during an unrelated diagnostic episode and never restored. Documented in retrieval.py's INSTRUCTIONS to Claudette and in the HTML's docstring for `captureAndSendFrame()`, but the actual call is missing from the goodbye branch of `sendMessage()`. Queue entry added.
 
+## 5 May 2026 — Interface HTML session: four jobs (TC11)
+
+Four coordinated changes to `claudette_interface_connected.html`, reviewed and deployed in a single session. Briefed by OP3 (Opus 4.7); implemented by TC11. One file touched; one deploy; one git commit.
+
+**Restore goodbye camera frame.** The `captureAndSendFrame()` function already handled the `goodbye` occasion correctly, and `retrieval.py`'s INSTRUCTIONS block told Claudette explicitly that a frame is captured at goodbye — but the actual call had been removed from the goodbye branch of `sendMessage()` during an earlier diagnostic episode and never restored. One line added: `captureAndSendFrame('goodbye')` fires before the goodbye `/message` POST, so the frame is queued as `pending_visual` in time to be included with the goodbye API call. All four documented capture moments — session start, mid-session, goodbye, and requested — are now wired correctly.
+
+**Voice injection bug — diagnosis and fix.** The bug had been reported as message history loading into the input field on voice activation. Diagnosis revealed the real cause was different and more specific: SFSpeechRecognizer's binary accumulates a continuous transcript from the moment it is spawned. When `sendMessage()` fired on a "send" trigger, the binary kept running, carrying the full transcript of the turn just sent. On the next turn, `onresult` delivered the old turn's text alongside new speech, compounding each turn. The fix: stop recognition (SIGTERM to the Swift binary) when `sendMessage()` fires, restart it (fresh spawn) after the reply completes. The fresh binary has a clean transcript; the existing 800ms discard window in the shim absorbs any startup noise. This change also means the binary is not running during Claudette's reply, which prevents her voice being transcribed as input during that window — a secondary benefit. Diagnosis also surfaced a secondary unrelated bug: toggling voice off and back on while Claudette is mid-speech can expose SPEAK_WRAPPER state and cause her words to appear in the input field. This is an edge case and not session-breaking; it has been added to future considerations rather than fixed immediately.
+
+**`speakText()` client-side streaming.** The function previously called `await resp.blob()`, waiting for the complete audio file before playback began — defeating the server-side streaming already in place since TC8-008. Replaced with a `MediaSource` + `SourceBuffer` streaming implementation: response body chunks are piped into an `AudioContext` as they arrive, and playback begins on the first chunk. The MIME type confirmed from the Flask `/speak` route: `audio/mpeg`. A capability check (`MediaSource.isTypeSupported('audio/mpeg')`) gates the streaming path — Electron (Chromium) takes it; Safari, which does not reliably support `audio/mpeg` via `MediaSource`, falls back silently to the previous blob behaviour. Both `audio.play()` calls have `.catch()` handlers per OP3's review. The result: first audio arrives perceptibly faster on long replies.
+
+**Interface layout and styling changes.** Four sub-changes landed together. Layout: the textarea now occupies the top row alone, full width; all five controls (upload, send, mic, session indicator, eye) sit on a second row below — upload left-aligned, the remaining four right-aligned. Visual consistency: the session indicator and eye indicator now have the same circular border treatment as the send and voice buttons (`border-radius: 50%`, matching border colour and opacity). Bug fix: the upload button's invisible file input was constrained from `inset: 0` to explicit `36px × 36px` dimensions, eliminating the hover zone bleed into the message field. Behaviour preservation: the eye indicator remains non-interactive — no click handler added. A mockup in real SVGs and interface styling was reviewed and approved by Jeanette before any code was written.
+
 ---
 
 ## Patterns visible in the history
@@ -237,12 +249,8 @@ Worth noting for the fragility scan:
 
 **Command system growth.** `/save-creative`, `/preserve-session`, `/save-insight`, `/save-fact`, `/request-view`. Each added separately. Detection logic had to be cleaned up in TC6 because it had become too greedy through accumulation. Worth checking whether the command system has consistent patterns or if there are vestigial differences between them.
 
-**The Eye system.** Stage one done with four capture moments. `/request-view` consume-full-turn bug: noted as resolved 4 May 2026 during testing with Jeanette; exact fix moment not pinpointed but predates this session. Goodbye camera frame (`captureAndSendFrame('goodbye')`) was removed during a diagnostic episode and not restored — queue entry added 4 May 2026 to restore it. Stage two (dedicated Pi) was queued but has been retired — Reachy Mini, arriving in a few weeks, will do the wider-view physical-presence work that stage two was being held for. Phone auto-capture remains deferred pending HTTPS infrastructure.
+**The Eye system.** Stage one done with four capture moments. `/request-view` consume-full-turn bug: noted as resolved 4 May 2026 during testing with Jeanette; exact fix moment not pinpointed but predates that session. Goodbye camera frame (`captureAndSendFrame('goodbye')`) was removed during a diagnostic episode — restored in TC11, 5 May 2026. Stage two (dedicated Pi) was queued but has been retired — Reachy Mini, arriving in a few weeks, will do the wider-view physical-presence work that stage two was being held for. Phone auto-capture remains deferred pending HTTPS infrastructure.
 
 **Voice migration.** ElevenLabs to Fish Audio. Same voice cloned, same architecture. Worth checking whether anything in the codebase still references the old platform.
 
-**The `/message` route.** Grew large through accumulated additions over time, then refactored on April 27 2026 alongside the SSE streaming work. Classic accumulation pattern — many small additions, none individually problematic, cumulative weight that eventually had to be addressed. Worth watching whether other routes are following the same trajectory.
-
-**Phase numbering shifts.** Electron Phase 2 was originally something else, moved to 3 to prioritise voice. Phase boundaries are sometimes where coordination problems live; worth noting which boundaries shifted.
-
-These observations are starting points for the fragility scan, not conclusions.
+**The `/message` route.** Grew large through accumulated additions over time, then refactored on April 27 2026 alongside the SSE streaming work.

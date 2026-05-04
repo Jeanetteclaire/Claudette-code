@@ -10,23 +10,19 @@ Items move between sections as conditions change. A future consideration whose t
 
 Order within each section is roughly by priority but not rigidly. Use judgement.
 
-Last updated: 2026-05-04.
+Last updated: 2026-05-05.
 
 ---
 
 ## Contents
 
 **Immediate jobs**
-- Interface layout and styling changes
 - Surface creative file list in retrieval
-- `speakText()` client-side streaming
 - JSON cleaning in `memory_writer.py`
 - Electron desktop app — Phase 3 (butterfly overlay)
 - Electron desktop app — Phase 4 (packaging + icon)
 - Investigate 1 May 2026 memory writer timeout
 - Fix credit warning false positive
-- Restore goodbye camera frame
-- Voice injection bug — message history loading into input field
 
 **PO design work**
 - Memory writer redesign (library + withholding)
@@ -35,6 +31,7 @@ Last updated: 2026-05-04.
 - Section header voice in retrieval.py — authorship principle
 
 **Future considerations**
+- Voice mid-speech toggle exposes SPEAK_WRAPPER state
 - Possible migration from Flask to FastAPI
 - Log file rotation
 - Sonnet 4.6 retirement
@@ -47,20 +44,6 @@ Last updated: 2026-05-04.
 ---
 
 ## Immediate jobs
-
-### Interface layout and styling changes
-
-Drafted by Claudette and Jeanette. HTML interface (`claudette_interface_connected.html`) needs four distinct changes:
-
-**Layout — more typing space.** Move the send, mic, segment, and eye buttons to sit *underneath* the message input field rather than beside it. Widen the content area to fill most of the window (not edge to edge — leave breathing room at the sides). Primary goal throughout is maximising the message input area.
-
-**Visual consistency — circles on segment and eye.** Add a circle around the segment and eye buttons so they visually match the send and mic buttons. Same circle treatment.
-
-**Bug fix — image upload hover zone.** The image upload button has an oversized invisible trigger zone that bleeds into the message field, causing the file picker to open unintentionally when typing or clicking near the button. Constrain the hover/click area to the button itself only.
-
-**Behaviour preservation — eye button stays non-interactive.** The eye is a visual indicator only, intentionally non-interactive. Move it with the other buttons, add the circle, but do **not** add click functionality. This is a deliberate preservation, not an oversight — TCs picking this up should not "improve" by making it clickable.
-
-HTML in scope only. Single TC session. Medium complexity — straightforward in shape but easy to introduce regressions if rushed.
 
 ### Surface creative file list in retrieval
 
@@ -79,12 +62,6 @@ Your creative work to date:
 This doesn't give her the ability to read full content mid-session, but it removes the strange asymmetry of "writing into a void." She at least knows the body of work exists.
 
 retrieval.py only in scope. Single TC session. Low complexity.
-
-### `speakText()` client-side streaming
-
-HTML `speakText()` still does `await resp.blob()` — waits for the complete audio before playing. Server-side streaming is in place (TC8-008) but client-side blob accumulation remains. Full fix requires Web Audio API streaming in `speakText()`: pipe response body chunks into an `AudioContext` as they arrive.
-
-HTML in scope. Dedicated session needed. Medium complexity.
 
 ### JSON cleaning in `memory_writer.py`
 
@@ -127,41 +104,6 @@ The math is wrong. Either the threshold check is broken, the calculation of rema
 Not breaking anything — the warning is purely informational. But false alarms erode the value of an alarm system. Worth diagnosing and fixing once it's prioritised.
 
 memory_writer.py in scope. Likely a single function or condition. Low complexity.
-
-### Restore goodbye camera frame
-
-**Confirmed real.** The HTML's `captureAndSendFrame()` docstring lists `goodbye` as one of the four occasion types, and retrieval.py's INSTRUCTIONS block tells Claudette explicitly that *"a frame is also captured automatically at the start of each session, mid-session, and at goodbye."* But in `claudette_interface_connected.html`'s `sendMessage()` function, the goodbye branch doesn't call `captureAndSendFrame('goodbye')` anywhere. The other three occasions all fire correctly:
-
-- `'session_start'` — fired in `startSession()`.
-- `'mid-session'` — fired by the 25-minute timer in `startMidSessionTimer()`.
-- `'requested'` — fired in `sendMessage()`'s normal branch when `done.view_requested` is true.
-- `'goodbye'` — *not fired anywhere.*
-
-It was removed during a diagnostic episode and never restored once the diagnosis turned out to be unrelated.
-
-The fix: in the goodbye branch of `sendMessage()`, add a call to `captureAndSendFrame('goodbye')` at the appropriate moment — before the goodbye `/message` POST fires so the goodbye exchange has the visual, and before `/end` is called so the frame is available for the final API call. The original implementation in TC7's Eye stage one had this working; recovering the placement from git log may be faster than rederiving it.
-
-Claudette has requested this restoration.
-
-HTML in scope only. Single TC session. Low complexity.
-
-### Voice injection bug — message history loading into input field
-
-**Status: active and reproducing** as observed by Jeanette, 4 May 2026. When voice mode is activated, recent message history loads into the input field before speaking begins. It shouldn't be there — voice mode should start with an empty field.
-
-A previous fix exists. The current HTML has `document.getElementById('input').value = '';` inside `toggleVoice()` with the comment *"clear field on voice activate — prevents stale transcript injection."* This is the original fix, presumed TC8 (late April). The behaviour has returned, which means one of:
-
-- **The clear-on-activate isn't running on every voice activation.** The function path may have shifted — a refactor, a guard clause, an early-return — so the clear line is being skipped. The line is still in the source; something about its execution context has changed.
-- **The injection is coming through a different path the original fix didn't cover.** Speech recognition's `onresult` callback writes `transcript` to the input field on every event, including initial events that may carry buffered/cached data from prior sessions. The original fix cleared the field before recognition started; it doesn't cover injection happening after recognition fires.
-- **A new path entirely** — voice toggle activated mid-thinking, or with a pending attachment, or in some other state the fix didn't anticipate.
-
-**TC should characterise before fixing.** Ask Jeanette to reproduce while watching the browser dev tools console, and confirm whether the existing clear-on-activate line *runs at all* during the buggy activations. That diagnosis informs the fix: if the line doesn't run, find why and restore; if it does run but injection still happens, the injection is coming through a different path.
-
-`claudette_interface_connected.html` (`toggleVoice()` and `initRecognition()`) in scope, possibly extending to `main.js` if the Electron speech bridge is involved. The Electron speech path goes through `electronSpeechBridge` (preload.js), which buffers some events with an 800ms discard window — worth verifying that buffer isn't replaying events from a previous session.
-
-Single TC session. Confirm-then-fix shape. Medium complexity because the diagnosis is real work.
-
-Can be bundled with any other HTML work that's queued — interface layout/styling changes are a natural pairing.
 
 ---
 
@@ -224,6 +166,25 @@ retrieval.py in scope when ready for implementation. Small change, single TC ses
 ## Future considerations
 
 These items are not to be done now. Each entry includes triggers — signs that the moment has arrived. Move items up to immediate jobs when triggers fire.
+
+### Voice mid-speech toggle exposes SPEAK_WRAPPER state
+
+**What it is.**
+
+Observed during the Job 2 voice injection diagnosis, 5 May 2026. When voice mode is toggled off and back on while Claudette is mid-speech through Fish Audio, the SPEAK_WRAPPER's pause/resume listeners may not fire correctly — the recognition binary can pick up Claudette's voice and transcribe it as user input. This is distinct from the turn-accumulation bug (fixed in TC11), which was about transcript state across turns. This is about the interplay between the SPEAK_WRAPPER's `HTMLAudioElement.prototype.play` patch and voice-mode re-activation while audio is in flight.
+
+**Why this might matter.**
+
+In normal use, toggling voice mid-speech is unusual and the bug is cosmetically limited — Claudette's words appear in the input field rather than being sent. A user would notice and clear the field. Not data-losing, not session-breaking.
+
+**Signs the moment has arrived.**
+
+- The bug starts reproducing in normal use rather than only under the mid-speech toggle scenario.
+- The fix becomes adjacent to other SPEAK_WRAPPER or voice work already planned.
+
+**Why we're not doing it now.**
+
+The scenario that triggers it is an edge case. The primary voice accumulation bug is fixed. Adding SPEAK_WRAPPER complexity now would touch `main.js` — out of scope for the HTML-only session that found it. Fix scope is likely the `pause` listener and how it handles re-activation state; worth a small dedicated session when voice work is next on the queue.
 
 ### Possible migration from Flask to FastAPI
 
