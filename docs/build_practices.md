@@ -4,7 +4,7 @@ Durable engineering standards for working on Claudette. These are the rules that
 
 Different from `work_queue.md` (which holds *what to do*) and `git_handbook.md` (which holds *how to use git*). This document holds *how to work*. The meta-rules.
 
-Last updated: 2026-04-30. Update when new lessons earn their way in.
+Last updated: 2026-05-05. Update when new lessons earn their way in.
 
 ---
 
@@ -191,6 +191,101 @@ So a download containing edits to `memory_writer.py`, `docs/architecture_compani
 This bit on 3 May 2026 — TC9's commit landed only the code file because his `mv` commands used the nested-path form for the four document files, all of which silently failed. The fix was a follow-up commit with the correct paths.
 
 **The rule for instances:** when writing `mv` commands, always use `~/Downloads/files/[filename]` as the source, regardless of where the file goes in the destination. The destination uses the proper repo structure (`docs/`, `docs/briefs/`, etc.); the source is always flat.
+
+## Session handover — what TCs produce at the end
+
+A TC session ends with a handover to Jeanette: code on disk, documentation reflecting what changed, and the exact commands she runs to push it. The technical work itself is usually clean by the time we reach this point. The handover is where things have wobbled most.
+
+Four rules below. They are tightly coupled. Together they make the end of a session a near-mechanical process rather than a creative one.
+
+### 1. Documentation deliverables are complete files, never change logs or partial entries
+
+When a TC session updates documentation, the deliverable is the *full updated file*, ready to be moved into place. Not a chat summary of what changed. Not a partial file containing only the new entry that Jeanette has to merge in by hand. Not a list of find/replace pairs.
+
+**Bad shape:** *"Here's a summary of the updates I made to work_queue.md and project_history.md..."* — Jeanette can't deploy a summary. She'd have to ask for the files anyway. Producing the summary first wastes a turn.
+
+**Bad shape:** *"This is the new entry only — paste it into project_history.md above the 'Patterns visible' heading."* — Manual surgery on a live file. Easy to typo, easy to misplace, hard to verify. Each manual merge is a chance for the working tree to diverge from intent.
+
+**Good shape:** A complete updated `project_history.md` with the new entry already in the right location. Jeanette runs `mv ~/Downloads/files/project_history.md docs/project_history.md` and the deploy is done.
+
+The pattern that works: TC produces every file that needs to change, in full, and presents them through whatever the file-handover mechanism is. Jeanette downloads, moves, commits, pushes. No manual editing of live files.
+
+### 2. Every candidate doc gets an explicit decision
+
+For each document the session might plausibly affect, the TC makes a decision: *update* or *no update*. If no update, state the reason briefly. Silent omission of a doc that should have been considered is a coordination failure — the next reader can't tell whether it was forgotten, judged unnecessary, or genuinely irrelevant.
+
+**Where the decision lives:** in the `project_history.md` entry for that session, alongside the list of what *did* change. One sentence is enough. Example:
+
+> *Architecture companion considered, no update — the binary lifecycle change is a behavioural detail within the Electron layer rather than an architectural one.*
+
+That sentence does the work. Future readers know the file was considered and skipped, and why. The next TC starting a related session knows the companion doesn't need re-checking on this account. No separate decisions log; the project_history entry is the right home because the decision is part of "what happened."
+
+The candidate set for any TC session typically includes: `work_queue.md`, `project_history.md`, `architecture_companion.md`, `glossary.md`, `memory_files.md`, `maintenance.md`, plus any file-specific docs (`build_practices.md`, `terminal_commands.md`, etc.). A session doesn't touch all of them, and a session doesn't need to discuss all of them — only the ones a future reader might plausibly wonder about. If a session is purely HTML, the TC doesn't need to write *"memory_files.md considered, no update"* because no plausible reader would expect it. The bar is *plausibly relevant, not exhaustively considered*.
+
+### 3. The deploy command block follows a fixed template
+
+The block Jeanette runs at the end of a session has a standard shape. Following the shape makes the deploy mechanical. Deviating from it tends to produce silent partial commits or convention drift.
+
+**The template:**
+
+```
+cd ~/Claudette
+mv ~/Downloads/files/[file1] [destination1]
+mv ~/Downloads/files/[file2] [destination2]
+...
+git add [file1] [file2] ... [code_files...]
+git commit -m "[clear message — what shipped, not how]"
+git push
+```
+
+**The fixed elements:**
+
+- Always `cd ~/Claudette` first.
+- Always `mv`, not `cp`. The convention is `mv` for deploys; `cp` leaves stale files in `~/Downloads/files/` that confuse the next deploy.
+- Source paths are always flat: `~/Downloads/files/[filename]`, regardless of where the file lives in the destination. This is the "files downloaded from claude.ai unzip flat" rule from earlier in this document; it is non-negotiable because nested paths fail silently.
+- Destination paths use the proper repo structure: `docs/work_queue.md`, `docs/briefs/some_brief.md`, etc.
+- **If the session had an OP-written brief, include it.** The brief lives in `~/Downloads/files/` from when OP produced it at session start. Without an explicit deploy line, it sits there orphaned. Add `mv ~/Downloads/files/[brief_filename].md docs/briefs/[brief_filename].md` to the block, and `docs/briefs/[brief_filename].md` to the git add line. The brief commits alongside the work it scoped, and the historical record is complete.
+- `git add` lists *every* file in the commit — both the moved files and any code files modified during the session that aren't in `~/Downloads/files/`. Forgetting a code file means the next push will leave it untracked.
+- `git commit -m` uses a clear single-line message describing what shipped. The session prefix (e.g. `TC11-001`) plus a short list of changes is the standard shape.
+- Always `git push` at the end. Without it, the changes are local-only.
+
+**What the template never includes:**
+
+- Manual-edit instructions like *"open this file and paste the new entry above the heading."* If a file needs changing, the change is in the file the TC produces.
+- `cp` commands.
+- Optional steps presented as "you might want to also..." Jeanette runs the block as written. Optional steps mean the block isn't ready.
+- Comments inside the block referencing files that aren't in `~/Downloads/files/`.
+
+### 4. Version lines: per-change, not per-date
+
+Each key file (`server.py`, `retrieval.py`, `memory_writer.py`, `claudette_interface_connected.html`, etc.) carries a version line of the shape:
+
+```
+# Version: YYYY-MM-DD-TC[n]-[increment]
+```
+
+The increment goes up *every time the file changes*, but the increment resets when a new TC instance touches the file. Each TC starts at `001` for any file, regardless of what previous TCs did. The date is the date of that particular change.
+
+**Concrete example:**
+
+- TC10 ships server.py for the first time on 3 May → `2026-05-03-TC10-001`
+- TC10 ships server.py again on 4 May → `2026-05-04-TC10-002` (same TC, second touch)
+- TC10 ships server.py a third time later on 4 May → `2026-05-04-TC10-003`
+- TC11 ships server.py on 5 May → `2026-05-05-TC11-001` (new TC, fresh increment)
+
+The increment counts how many times *this* TC has touched *this* file. Not file lifetime, not session count — just this TC's touches of this file.
+
+**The reason this matters:** version lines are how Jeanette and the next TC verify what's running. If a TC bumps `001` again on a second touch, the version line lies about whether anything changed between deploys. Worse, a TC starting a new session might read a stale `001` and assume they're picking up a clean baseline when they're actually picking up the *second* deploy with the same number.
+
+When in doubt about your starting increment: search the file's commit history (`git log --oneline -- path/to/file`) for the most recent version line that *this TC* contributed. The next number after that is the right one. If this TC has never touched the file before, start at `001`.
+
+---
+
+### Why this is one section rather than four
+
+These four rules are facets of a single discipline: *the end of the session is the moment to be most mechanical, least creative.* Every wobble in the last three days has been a small drift away from one of these four — a summary instead of a file, a `cp` instead of a `mv`, a 001 instead of a 002, an architecture_companion judgement left silent rather than stated. Individually, each is small. Together, they account for nearly all the friction in otherwise-clean sessions.
+
+Treating them as one section reflects how they show up in practice: at the same point, in the same handover, by the same TC. A TC who internalises the four together produces clean handovers. A TC who treats them as four separate things to remember tends to forget at least one.
 
 ## The manual retry command matters
 
