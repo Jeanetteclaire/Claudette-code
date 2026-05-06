@@ -10,7 +10,7 @@ Items move between sections as conditions change. A future consideration whose t
 
 Order within each section is roughly by priority but not rigidly. Use judgement.
 
-Last updated: 2026-05-05.
+Last updated: 2026-05-05. Update by moving items between sections as conditions change.
 
 ---
 
@@ -32,6 +32,7 @@ Last updated: 2026-05-05.
 
 **Future considerations**
 - Voice mid-speech toggle exposes SPEAK_WRAPPER state
+- Memory writer should log input and output token counts
 - Possible migration from Flask to FastAPI
 - Log file rotation
 - Sonnet 4.6 retirement
@@ -354,6 +355,24 @@ A session is already touching logging-related code for another reason, and the c
 Purely cosmetic. A dedicated session isn't worth it. Do it opportunistically.
 
 **Scope when it happens.** Remove emoji prefix characters from log message strings only. Do not change message text otherwise. Both server.py and memory_writer.py. Cold-boot test after. Single TC pass.
+
+### Memory writer should log input and output token counts
+
+**What it is.**
+
+Two log lines added to `memory_writer.py` — one capturing input tokens (from `response.usage.input_tokens`), one capturing output tokens (`response.usage.output_tokens`). Logged at INFO level after the API call completes.
+
+**Why this might matter.**
+
+Token counts make writer performance legible. The 17-minute writer run on 5 May 2026 could not be definitively diagnosed — couldn't separate unusually large workload from slow API response. Token counts would have made that diagnosis trivial: large input and output tokens point to workload; normal counts with long elapsed time point to API latency.
+
+**Signs the moment has arrived.**
+
+Anyone is already in `memory_writer.py` for another reason, or a future writer timeout or slowness needs diagnosis and the token data would help interpret it.
+
+**Why we're not doing it now.**
+
+Small diagnostic enhancement. Not blocking anything. Worth queuing as opportunistic work for the next session that touches the writer.
 
 ---
 
