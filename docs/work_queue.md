@@ -10,14 +10,13 @@ Items move between sections as conditions change. A future consideration whose t
 
 Order within each section is roughly by priority but not rigidly. Use judgement.
 
-Last updated: 2026-05-13. Update by moving items between sections as conditions change.
+Last updated: 2026-05-15. Update by moving items between sections as conditions change.
 
 ---
 
 ## Contents
 
 **Immediate jobs**
-- Fix overwrite bug in memory_writer.py write_memory_updates()
 - Surface creative file list in retrieval
 - JSON cleaning in `memory_writer.py`
 - Electron desktop app — Phase 3 (butterfly overlay)
@@ -46,16 +45,6 @@ Last updated: 2026-05-13. Update by moving items between sections as conditions 
 ---
 
 ## Immediate jobs
-
-### Fix overwrite bug in memory_writer.py write_memory_updates()
-
-**Active data loss on multi-session days.** `write_memory_updates()` writes the session experience file (`memory/experiences/sessions/YYYY-MM-DD.md`) with no read-merge-append step — each writer run overwrites the file entirely with that run's content only. On multi-session days, the afternoon writer silently discards the morning session.
-
-The fix: before writing the experience file, read its current content and append the new session rather than replacing. A separator line or minimal header between appended sessions would make the structure legible. The other memory files (observations, values, facts, etc.) are not affected — they already read and merge correctly.
-
-Full diagnosis and recovery history in `docs/project_history.md` entry dated 12–13 May 2026.
-
-`memory_writer.py` in scope only. Single TC session. Low complexity — the fix is a small, contained change to one function.
 
 ### Surface creative file list in retrieval
 

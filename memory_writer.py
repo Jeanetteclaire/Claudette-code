@@ -1,5 +1,5 @@
 """
-# Version: 2026-05-04-TC10-002
+# Version: 2026-05-15-TC13-001
 memory_writer.py
 
 Claudette — Memory Writer
@@ -24,7 +24,7 @@ import re
 import sys
 import time
 from pathlib import Path
-from datetime import date
+from datetime import date, datetime, timezone
 from github import Auth, Github, GithubException
 from dotenv import load_dotenv
 
@@ -492,61 +492,56 @@ def call_memory_writer(transcript: str, current_memory: dict, session_date: str,
         sys.exit(1)
 
 
-def write_memory_updates(repo, result: dict, session_date: str) -> int:
-    """Write the memory writer's updates back to GitHub. Returns files updated count."""
-    files_updated = 0
-
-    # Always write the session file
-    session_path = f"memory/experiences/sessions/{session_date}.md"
-    session_content = result.get("session", "")
-
-    if session_content:
-        logger.info(f"  Writing session file: {session_path}")
-        # Temporary commit message — will be updated once we know the total
-        write_file(repo, session_path, session_content, "temp")
-        files_updated += 1
-    else:
-        logger.warning("  WARNING: No session content returned — skipping session file.")
-
-    # Write any other files the writer flagged
-    updates = result.get("updates", {})
-    for key, content in updates.items():
-        if content is None:
-            continue
-        path = MEMORY_FILES.get(key)
-        if not path:
-            logger.warning(f"  WARNING: Unknown file key '{key}' — skipping.")
-            continue
-        logger.info(f"  Updating: {path}")
-        write_file(repo, path, content, "temp")
-        files_updated += 1
-
-    return files_updated
-
-
-def rewrite_commits_with_final_message(repo, result: dict, session_date: str, files_updated: int):
+def wrap_session(content: str, session_number: int, timestamp: str) -> str:
     """
-    GitHub's API doesn't allow editing commit messages after the fact.
-    Instead we do a single final commit per file with the correct message.
-    This function re-writes all changed files with the final commit message.
+    Wrap session content with HTML-comment markers for the multi-session file format.
+    Shape mirrors the recovery script's marker minus the commit hash — the writer
+    has no commit hash at write time (the commit hasn't happened yet).
     """
-    commit_message = f"Session {session_date} — {files_updated} files updated"
-    logger.info(f"Commit message: '{commit_message}'")
+    return (
+        f"<!-- Session {session_number} — {timestamp} -->\n\n"
+        f"{content.strip()}\n\n"
+        f"<!-- end session {session_number} -->"
+    )
 
-    # Session file
-    session_path = f"memory/experiences/sessions/{session_date}.md"
-    session_content = result.get("session", "")
-    if session_content:
-        write_file(repo, session_path, session_content, commit_message)
 
-    # Other files
-    updates = result.get("updates", {})
-    for key, content in updates.items():
-        if content is None:
-            continue
-        path = MEMORY_FILES.get(key)
-        if path:
-            write_file(repo, path, content, commit_message)
+def merge_session_content(existing: str, new_content: str, timestamp: str):
+    """
+    Merge new session content into the existing session file content.
+    Returns (merged_text, session_number) — session_number is the number assigned
+    to the new content.
+
+    Three cases:
+      1. existing empty                → wrap new as Session 1.
+      2. existing has '<!-- Session '  → append new as Session N+1
+                                         (N = count of opening markers).
+      3. existing non-empty, no marker → wrap legacy as Session 1 with the literal
+                                         string 'pre-fix legacy content' in the
+                                         timestamp slot (honest about not knowing
+                                         when within the day it was written),
+                                         append new as Session 2.
+
+    Counting substring '<!-- Session ' (capital S, trailing space) matches both
+    native writes and recovery-format markers
+    ('<!-- Session N — commit [hash] — [ts] -->'), and does not match the
+    lowercase '<!-- end session ' closers.
+    """
+    existing = existing.strip()
+    new_content = new_content.strip()
+
+    if not existing:
+        return wrap_session(new_content, 1, timestamp), 1
+
+    marker_count = existing.count("<!-- Session ")
+
+    if marker_count == 0:
+        wrapped_legacy = wrap_session(existing, 1, "pre-fix legacy content")
+        new_section = wrap_session(new_content, 2, timestamp)
+        return wrapped_legacy + "\n\n" + new_section, 2
+
+    next_number = marker_count + 1
+    new_section = wrap_session(new_content, next_number, timestamp)
+    return existing + "\n\n" + new_section, next_number
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
@@ -641,12 +636,19 @@ def main():
     commit_message = f"Session {args.date} — {files_updated} files updated"
     logger.info(f"Commit message: '{commit_message}'")
 
-    # Session file
+    # Session file — read existing first so multi-session days append rather than overwrite.
+    # Without this read-merge step, each writer run on a multi-session day silently
+    # discarded the previous session's content. Fix landed 2026-05-15 (TC13).
     session_path = f"memory/experiences/sessions/{args.date}.md"
     session_content = result.get("session", "")
     if session_content:
-        logger.info(f"  Writing: {session_path}")
-        write_file(repo, session_path, session_content, commit_message)
+        existing_content = read_file(repo, session_path)
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        merged_content, session_number = merge_session_content(
+            existing_content, session_content, timestamp
+        )
+        logger.info(f"  Writing: {session_path} (session {session_number})")
+        write_file(repo, session_path, merged_content, commit_message)
 
     # Other files
     for key, content in updates.items():

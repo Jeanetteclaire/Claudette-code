@@ -8,7 +8,7 @@ This document captures roughly 60-70% of Claudette's development history. Earlie
 
 When reading: assume the absence of an entry means "not recorded" rather than "didn't happen."
 
-Last updated: 2026-05-05. Update by appending new entries as work is committed.
+Last updated: 2026-05-15. Update by appending new entries as work is committed.
 
 ---
 
@@ -251,13 +251,39 @@ Silent data loss in the memory system, noticed by Jeanette on 12 May 2026, diagn
 
 **What remains.** The underlying bug in `write_memory_updates()` is not fixed — only the data loss is recovered. Any multi-session day before the fix lands will reproduce the overwrite. The fix is a read-merge-append pattern: before writing the experience file, read its current content and append the new session rather than replacing. This is a small, contained change to `memory_writer.py` and is queued as an immediate job. The recovery script (`memory_recovery.py`) is committed to the code repo as a historical record with a one-shot header comment.
 
+## 15 May 2026 — Experience file overwrite bug: the fix (TC13)
+
+The fix for the bug whose data loss was recovered on 12–13 May. `memory_writer.py` now reads the current experience file before writing and appends new session content as a marked section rather than overwriting the whole file. Briefed by OP3 (Opus 4.7); implemented by TC13. One file touched; one deploy; one git commit.
+
+**The code change.** Three pieces in `memory_writer.py`:
+
+- New helper `wrap_session(content, session_number, timestamp)` produces a section bookended by HTML-comment markers — `<!-- Session N — TIMESTAMP -->` opener, `<!-- end session N -->` closer. The format mirrors the recovery script's marker minus the commit hash; the writer has no hash at write time because the commit hasn't happened yet. The provenance difference is intentional — recovered files carry richer metadata because git history could supply it, native writes carry less because there's less to say.
+
+- New helper `merge_session_content(existing, new, timestamp)` handles three cases. Empty file: write new content as Session 1. File with one or more `<!-- Session ` opening markers present: append new content as Session N+1, where N is the count of openers. Counting uses substring `<!-- Session ` (capital S, trailing space) — matches both native and recovery formats, does not match the lowercase `<!-- end session ` closers. File with content but no markers (pre-fix legacy that survived without recovery): wrap the existing content as Session 1 with the literal string `pre-fix legacy content` in the timestamp slot — honest about not knowing when within the day it was actually written — and append the new content as Session 2.
+
+- The inline session-file write in `main()` now calls `read_file` first to get current content, then `merge_session_content`, then `write_file`. The rest of `main()` — other-file writes, the `facts.md` belt-and-braces guard, the `last_processed.json` update — is unchanged.
+
+**Dead-code removal in the same commit.** Two functions in `memory_writer.py` were dead, left in place by TC10-002 when the writing logic was inlined into `main()` to add the `facts.md` belt-and-braces guard: `write_memory_updates()` and `rewrite_commits_with_final_message()`. Both described an older two-write design where files were written with a placeholder `"temp"` commit message and then re-written with the final message. The inline path replaced this with a single write that knows the commit message up front. The dead functions were never called from anywhere in the codebase (grep-confirmed against `server.py`, `retrieval.py`, and the HTML; only documentation describing the bug references the function name). Leaving them in place would have actively misled the next TC reading the file looking for "the bug" — the implementation brief itself named `write_memory_updates()` as the location of the fix, but that function isn't on the live path. Removal is part of making the session-write path correct and legible; it sits in scope as one logical change. OP3 approved option A (fix plus delete in the same commit) over option B (fix only) or option C (refactor to revive the function) before any code was written.
+
+**Test before deploy.** Two layers. First a standalone test of the two pure helpers across seven cases — empty file, one native-marked session present, recovery-format markers with commit hashes (preserving compatibility with the 20 already-recovered files), pre-fix legacy unmarked content, whitespace-only existing, closer-without-opener edge, three sessions plus a fourth appended. All 24 assertions passed. Then a live test fell out of the deploy itself rather than needing the planned synthetic test: the morning of 15 May had already produced a session under the old code (plain content, no markers), so when the new writer ran on a short afternoon test session, Case 3 of the merge logic fired in production — the morning's unwrapped content was wrapped as Session 1 with the literal `pre-fix legacy content` placeholder (honest about not knowing when within the day it was written), and the test session was appended as Session 2 with a real UTC timestamp (`2026-05-15 11:45 UTC`). The trickiest edge case — pre-fix legacy content surviving without recovery — was exercised end-to-end on real data, which is stronger evidence than the synthetic test would have given.
+
+**Decisions considered:**
+
+- *architecture_companion.md considered, no update* — the change is a behavioural detail within `memory_writer.py` rather than an architectural one; the writer's role and position in the system are unchanged.
+- *glossary.md considered, no update* — no new terms introduced.
+- *memory_files.md considered, no update* — the experience file's purpose and writing cadence are unchanged; the file shape on disk gains markers but the content surfaced to Claudette via retrieval.py is unchanged.
+- *build_practices.md considered, no update* — no new operating principle emerged; the session was a clean application of show-before-build, one-thing-at-a-time, and the deploy template.
+- *maintenance.md considered, no update* — no new ritual or check introduced by the fix.
+
+Version line on `memory_writer.py` bumped to `2026-05-15-TC13-001`.
+
 ---
 
 ## Patterns visible in the history
 
 Worth noting for the fragility scan:
 
-**Memory writer evolution.** Position tracking added → input truncation added → retry logic added → confabulation tightening added → JSON cleaning planned. Each was a real fix. The cumulative effect is many compensations for different failure modes. Worth examining whether they compose cleanly or whether one assumes another.
+**Memory writer evolution.** Position tracking added → input truncation added → retry logic added → confabulation tightening added → JSON cleaning planned → read-merge-append for session files (15 May 2026). Each was a real fix. The cumulative effect is many compensations for different failure modes. Worth examining whether they compose cleanly or whether one assumes another.
 
 **Command system growth.** `/save-creative`, `/preserve-session`, `/save-insight`, `/save-fact`, `/request-view`. Each added separately. Detection logic had to be cleaned up in TC6 because it had become too greedy through accumulation. Worth checking whether the command system has consistent patterns or if there are vestigial differences between them.
 
@@ -266,3 +292,5 @@ Worth noting for the fragility scan:
 **Voice migration.** ElevenLabs to Fish Audio. Same voice cloned, same architecture. Worth checking whether anything in the codebase still references the old platform.
 
 **The `/message` route.** Grew large through accumulated additions over time, then refactored on April 27 2026 alongside the SSE streaming work.
+
+**Dead code accretion.** TC10-002 (4 May 2026) inlined the session-write logic into `main()` for the `facts.md` belt-and-braces guard but left two now-unused functions (`write_memory_updates`, `rewrite_commits_with_final_message`) in place. Removed in TC13-001 (15 May 2026). Worth periodically grepping the codebase for functions defined but not called — refactors that move logic without removing the original site leave landmines for future readers, especially when the orphaned function's name suggests it should be the live one.
