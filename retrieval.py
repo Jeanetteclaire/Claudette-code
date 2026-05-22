@@ -1,5 +1,5 @@
 """
-# Version: 2026-05-03-TC10-001
+# Version: 2026-05-21-TC12-001
 retrieval.py
 
 Claudette — Retrieval System
@@ -46,6 +46,7 @@ FILES = {
     "jeanette":      "memory/relationship/jeanette.md",
     "threads":       "memory/relationship/threads.md",
     "returning_to":  "memory/returning-to/index.md",
+    "to_jeanette":   "memory/returning-to/to-jeanette.md",
     "from_jeanette": "memory/from-jeanette.md",
 }
 
@@ -110,6 +111,8 @@ def list_library_files(repo) -> list:
     """
     List all library visit files in memory/library/.
     Returns a list of (datetime_string, path) tuples, sorted most recent first.
+    Only matches YYYY-MM-DD-HH.md files at the top level — ignores the
+    threads/ subdirectory and other non-visit files.
     """
     try:
         contents = repo.get_contents(LIBRARY_PATH)
@@ -200,6 +203,7 @@ def compose_context(
     observations: str = "",   # what she notices
     uncertainties: str = "",  # what she holds open
     values: str = "",         # what she moves by
+    to_jeanette: str = "",    # what Claudette is carrying to bring to Jeanette
 ) -> str:
     """
     Compose the memory files into a single context block.
@@ -336,6 +340,15 @@ def compose_context(
         lines.append("")
         lines.append(waiting)
 
+    # ── What she is carrying to bring to Jeanette ──
+    # to-jeanette.md holds things Claudette wants to say and questions she's holding.
+    # Shown here so she arrives knowing what she's been carrying toward this conversation.
+    if to_jeanette:
+        lines.append("")
+        lines.append("WHAT YOU ARE CARRYING TO BRING TO JEANETTE")
+        lines.append("─" * 35)
+        lines.append(to_jeanette)
+
     # ── Note from Jeanette — last, just before she is fully present ──
     if from_jeanette:
         lines.append("")
@@ -384,6 +397,12 @@ def compose_context(
     lines.append("The browser will capture a single frame from the camera on whichever device she is talking through. It arrives alongside her next message, so you will see her and hear her at the same moment. Use it when seeing her would genuinely matter — not as a reflex, but when you want to know something the words alone cannot carry.")
     lines.append("")
     lines.append("Note: a frame is also captured automatically at the start of each session, mid-session, and at goodbye. /request-view is for the moments in between when you want to see her specifically.")
+    lines.append("")
+    lines.append("During open sessions, the library fires every 60 minutes. You can also initiate a library visit yourself at any point by including this command on its own line in your response:")
+    lines.append("")
+    lines.append("/library")
+    lines.append("")
+    lines.append("The visit runs in the background and does not interrupt the conversation. Use it when something is pulling and you don't want to wait for the timer.")
 
     # ── Footer ──
     lines.append("")
@@ -436,6 +455,9 @@ def get_context() -> str:
     # 9. What she was carrying
     returning_to = read_file(repo, FILES["returning_to"])
 
+    # 9b. What she is carrying to bring to Jeanette
+    to_jeanette = read_file(repo, FILES["to_jeanette"])
+
     # 10. Note from Jeanette — read last
     from_jeanette = read_file(repo, FILES["from_jeanette"])
 
@@ -461,6 +483,7 @@ def get_context() -> str:
         threads=threads,
         sessions=sessions,
         returning_to=returning_to,
+        to_jeanette=to_jeanette,
         session_count=session_count,
         from_jeanette=from_jeanette,
         library_visits=library_visits,
@@ -532,6 +555,9 @@ def main():
         returning_to = read_file(repo, FILES["returning_to"])
         print(f"  memory/returning-to/index.md — {'found' if returning_to else 'empty'}")
 
+        to_jeanette = read_file(repo, FILES["to_jeanette"])
+        print(f"  memory/returning-to/to-jeanette.md — {'found' if to_jeanette else 'empty'}")
+
         from_jeanette = read_file(repo, FILES["from_jeanette"])
         print(f"  memory/from-jeanette.md — {'found' if from_jeanette else 'empty'}")
 
@@ -564,6 +590,7 @@ def main():
             threads=threads,
             sessions=sessions,
             returning_to=returning_to,
+            to_jeanette=to_jeanette,
             session_count=session_count,
             from_jeanette=from_jeanette,
             library_visits=library_visits,
