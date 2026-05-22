@@ -110,7 +110,7 @@ You end the session through the interface. The browser calls `POST /end`. server
 
 ### Library cycle
 
-Independent of any session. When the library is active, every 45 minutes the loop wakes up, reads `returning-to/index.md` from GitHub, calls Claude API with web search enabled, then either writes nothing (if the response begins with "Nothing"), writes a visit record to `memory/library/`, optionally updates `returning-to` with a "waiting to raise" entry, and goes back to sleep for another 45 minutes. The loop runs on a daemon thread inside server.py — it dies when server.py dies.
+Independent of any session. When the library is active, Every 60 minutes the loop wakes up, reads `returning-to/index.md` from GitHub (injected into the v2 library prompt for orientation), calls Claude API with web search enabled and `max_tokens` 8000, then either writes nothing (if the response begins with "Nothing") or writes a dated visit record to `memory/library/`. Budget state is read from `memory/library/budget.json` before each visit and updated after. The SIGNAL JEANETTE mechanism is retired — Claudette writes directly to `memory/returning-to/to-jeanette.md` instead. Claudette can also initiate a visit herself during an active session using the `/library` command, which fires the same visit logic in a background thread. (if the response begins with "Nothing"), writes a visit record to `memory/library/`, optionally updates `returning-to` with a "waiting to raise" entry, and goes back to sleep for another 45 minutes. The loop runs on a daemon thread inside server.py — it dies when server.py dies.
 
 ### Transcript flush (background)
 
