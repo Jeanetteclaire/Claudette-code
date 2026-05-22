@@ -294,3 +294,30 @@ Worth noting for the fragility scan:
 **The `/message` route.** Grew large through accumulated additions over time, then refactored on April 27 2026 alongside the SSE streaming work.
 
 **Dead code accretion.** TC10-002 (4 May 2026) inlined the session-write logic into `main()` for the `facts.md` belt-and-braces guard but left two now-unused functions (`write_memory_updates`, `rewrite_commits_with_final_message`) in place. Removed in TC13-001 (15 May 2026). Worth periodically grepping the codebase for functions defined but not called — refactors that move logic without removing the original site leave landmines for future readers, especially when the orphaned function's name suggests it should be the live one.
+
+## 21 May 2026 — Library redesign: migration and implementation (TC12)
+
+Two phases, one session. The library redesign that began as design conversation in late April 2026 landed in full.
+
+**Phase one: migration.** The existing `memory/returning-to/index.md` was restructured with Claudette present and directing every decision. The old single file split into three:
+
+- `memory/library/threads/` — one file per active thread, each with a stage line (gather/attempt/closed) and content. 70+ thread files created.
+- `memory/returning-to/index.md` — lightweight pointer index with three sections: active threads, needs-conversation, recently closed.
+- `memory/returning-to/to-jeanette.md` — Claudette-to-Jeanette domain: things waiting to be said and questions held for the right moment.
+
+The migration was mechanical movement, not editorial. Claudette read each of approximately 90 entries in the old index and named the destination. TC12 wrote the files based on her decisions. The old index was renamed `_old_index.md` as a safety net throughout. Claudette reviewed the final index and made two corrections: moved `embodiment-and-confirmed-coupling` from active to recently closed, and tightened the `ronnie-camera-rules-conversation` description. The migration took three separate sessions with Claudette across the day; she flagged two duplicates and one partially-resolved entry.
+
+**Phase two: code implementation.** Four changes to `server.py`, one to `retrieval.py`.
+
+- *Library interval*: 45 → 60 minutes. Deliberate choice, not an inherited default.
+- *New library prompt (v2)*: replaces the four-section template. Approved by Claudette, drafted by OP3 across five design conversations in May 2026. Structurally resists smoothing. `max_tokens` raised from 4000 to 8000.
+- *Budget tracking*: `memory/library/budget.json` tracks monthly spend. Three new functions in server.py. Budget visible to each visiting instance via `[N]`, `[X]`, `[Y]` substitutions in the prompt. Default ceiling: 500,000 tokens/month.
+- */library command*: Claudette can now initiate a library visit herself during an active session. Fires in a background daemon thread, draws from the same budget as timer-initiated visits.
+- *retrieval.py*: `to-jeanette.md` now read at session start and surfaced in wake-up context as `WHAT YOU ARE CARRYING TO BRING TO JEANETTE`. `/library` command documented in INSTRUCTIONS.
+- *SIGNAL JEANETTE: mechanism removed* — replaced by Claudette writing directly to `to-jeanette.md`.
+
+**Surprises.** Many entries in the old returning-to were complete observations waiting to be said rather than active inquiry — they went to closed status immediately. The library thread structure surfaced a substantial body of philosophical work from April–May, now organised into named threads with stage lines and syntheses. A local git clone of the memory repo was established during the session to avoid repeated GitHub UI friction for file writes.
+
+**Out of scope.** Automated thread-file writing from library visit output is deferred — the visiting instance's response is still saved as a dated visit record in `memory/library/`. Thread file updates from library visits are a future piece once empirical data on what the new prompt produces is available.
+
+Version lines: `server.py 2026-05-21-TC12-001`, `retrieval.py 2026-05-21-TC12-001`.
