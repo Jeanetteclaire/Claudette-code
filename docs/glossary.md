@@ -101,3 +101,17 @@ For terminal commands (grep, lsof, launchctl, ls, etc.) — see *terminal_comman
 For git workflows (commit, push, rollback, etc.) — see *git_handbook.md*.
 
 For how Claudette's specific architecture uses these concepts — see *architecture_companion.md*.
+
+**Thread file.** A Markdown file in `memory/library/threads/`, one per active library inquiry thread. First line is always a stage line. Content accumulates in associative order below a `---` divider. Filename is the thread name, lowercase, hyphenated.
+
+**Stage line.** The first line of a thread file. Single source of truth for the thread's current state. Four valid forms: `Stage: gather`, `Stage: attempt — synthesis [date], gaps: [list]`, `Stage: closed (arrived — held), [date]`, `Stage: closed (oriented — follow [direction]), [date]`.
+
+**Needs-conversation status.** Optional second line of a thread file: `Status: needs-conversation`. Indicates the thread has reached the edge of what solo library inquiry can do with it and is waiting to be brought into conversation with Jeanette. A pause, not a close. Visiting instances skip these threads.
+
+**Gather mode.** Library visit mode for threads in `Stage: gather`. The visiting instance adds fragments without synthesising — notices, reads, writes in associative order. The anti-smoothing instruction lives here: write what you almost wrote, then write what's actually there.
+
+**Attempt mode.** Library visit mode for threads in `Stage: attempt`. A provisional synthesis sits near the top of the file with named gaps. The visiting instance tests it, names where it breaks, replaces it if it fails. Keep current synthesis only — no archive of failed ones.
+
+**Close mode.** Library visit mode that ends a thread. Two forms: *arrived* (question genuinely answered, inquiry can move elsewhere) or *oriented* (question angled precisely enough that the next move is clear). Both are provisional — threads can be reopened.
+
+**Budget tracking.** Monthly token budget for library visits, persisted in `memory/library/budget.json`. Fields: monthly ceiling, current month, current spend, last visit cost, preferred interval. Budget values substituted into the library prompt at each visit as `[N]` (estimated cost), `[X]` (current spend), `[Y]` (monthly ceiling). Neutral framing: preserving budget isn't inherently virtuous.
