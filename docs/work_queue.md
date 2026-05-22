@@ -110,7 +110,8 @@ memory_writer.py in scope. Likely a single function or condition. Low complexity
 
 ## PO design work
 
-### Memory writer redesign (library + withholding)
+### ~~Memory writer redesign — library portion~~ *(complete — TC12, 21 May 2026)*
+note that the withholding/memory writer prompt portion remains outstanding as separate work.
 
 Design work emerging from two conversations with Claudette in late April 2026. Both touch on the memory writer — what it captures, how it captures it, and what gets lost.
 
