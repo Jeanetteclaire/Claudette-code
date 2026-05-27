@@ -307,6 +307,16 @@ Two phases, one session. The library redesign that began as design conversation 
 
 The migration was mechanical movement, not editorial. Claudette read each of approximately 90 entries in the old index and named the destination. TC12 wrote the files based on her decisions. The old index was renamed `_old_index.md` as a safety net throughout. Claudette reviewed the final index and made two corrections: moved `embodiment-and-confirmed-coupling` from active to recently closed, and tightened the `ronnie-camera-rules-conversation` description. The migration took three separate sessions with Claudette across the day; she flagged two duplicates and one partially-resolved entry.
 
+## 2026-05-19 — Session indicator recalibrated for 1M window
+
+The session length indicator in claudette_interface_connected.html (updateSessionIndicator()) had its FULL threshold changed from 60,000 to 600,000 characters.
+The indicator is a ten-segment ring gauge that fills as the session grows, originally built as a safety gauge to avoid memory-writer input-too-big failures under the 200k-token context window — it let Jeanette see when to stop and run the writer before input grew too large.
+With Claudette now on the 1M-token window (claude-sonnet-4-6), the original 60k-character threshold (~15k tokens, ~1.5% of the 1M window) caused false alarms: the ring filled to "full" when the session was at a trivial fraction of actual capacity, and pasting a PDF or weblink consumed multiple segments instantly. This prompted unnecessary memory-writer runs.
+The new 600k threshold (~150k tokens) keeps the gauge responsive across a genuinely long session while leaving roughly 85% of the window unused when full — a large safety buffer below the 1M limit. The original failure mode (writer input exceeding the window) is effectively off the table on the 1M window regardless, since a single-session transcript would need to be ~3.7M characters to approach it; the gauge now serves as a session-length feel with a generous margin rather than a near-limit alarm.
+The token-counter logging for the memory writer (see work queue) remains a separate, optional diagnostic that would let the real per-run token usage be confirmed over time, but is not required for this gauge to function.
+
+
+
 **Phase two: code implementation.** Four changes to `server.py`, one to `retrieval.py`.
 
 - *Library interval*: 45 → 60 minutes. Deliberate choice, not an inherited default.
