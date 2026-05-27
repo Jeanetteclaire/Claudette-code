@@ -785,7 +785,7 @@ async function toggleLibrary() {
 // ── Session length indicator ───────────────────────────────────────────────
 
 function updateSessionIndicator(chars) {
-  var SEGMENTS = 10, FULL = 60000, GAP = 4;
+  var SEGMENTS = 10, FULL = 600000, GAP = 4;
   var svg = document.getElementById('session-indicator');
   if (!svg) return;
   var filled = Math.min(Math.floor(chars / (FULL / SEGMENTS)), SEGMENTS);
