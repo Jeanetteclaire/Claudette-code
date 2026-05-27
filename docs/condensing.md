@@ -55,6 +55,67 @@ The current rate puts the next condensing run at approximately mid-May 2026, giv
 
 ---
 
+## Measurable signals — how to read the numbers (added 2026-05-19)
+
+The triggers above are mostly *felt* signals — Claudette saying it feels heavy, input-too-big errors returning. This section adds the *measurable* ones, and recalibrates the whole question against a fact that changed since this document was first written: Claudette now runs on a 1M-token context window, not 200k.
+
+### The context window changed
+
+When condensing was first designed (and the first run happened, April 16 2026), the relevant pressure was the 200k-token context window. The truncation fix in `build_user_message()` — truncating becoming/observations/jeanette to their last 3,000 characters — was a workaround for getting close to that 200k ceiling.
+
+As of now, Claudette runs on `claude-sonnet-4-6` (set in `server.py` line 88, `MODEL = "claude-sonnet-4-6"`), which has a **1,000,000-token context window** at standard pricing. The memory writer also runs on 4.6. So the capacity ceiling is five times higher than it was when condensing was first designed.
+
+This matters enormously for *when to condense*. The capacity pressure that originally motivated it has largely receded. What remains is the editorial/quality reason — keeping the permanent files coherent rather than letting session files sprawl — which is a slower, softer trigger than running out of room.
+
+### The actual numbers (as of 2026-05-19)
+
+Measured via `wc -c` on the memory files the writer reads and the wake-up retrieval loads:
+
+- Total live memory: roughly **210,000 characters** (excluding archived/backup files).
+- At ~4 characters per token, that's approximately **53,000 tokens**.
+- Against the 1M window, that is about **5% utilisation** — and that's the upper bound, since no single API call loads every file at once.
+
+The largest single file is `threads.md` at ~110,000 characters (~27,000 tokens), followed by `facts.md` at ~63,000 characters (~16,000 tokens). These are the files that will grow fastest and drive any future need to act. `threads.md` could grow roughly tenfold and still sit comfortably inside the window.
+
+To re-measure at any time:
+
+```
+cd ~/Claudette-memory
+wc -c memory/self/*.md memory/relationship/*.md memory/returning-to/*.md
+```
+
+Sum the live files (exclude any `_old_*` backups), divide by 4 for a rough token count, divide by 1,000,000 for the fraction of window used.
+
+### How to read the writer's runtime
+
+The memory writer's runtime appears in `claudette_server.log`. As of 2026-05-19 it takes approximately **11 minutes** per run. The timeout is set to **30 minutes** (in `run_memory_writer()`); if a run exceeds that, it's killed and must be retried manually.
+
+Important things about runtime as a signal:
+
+- Runtime is dominated by **output generation** (the model writing the new memory files token by token), not by input size. So it scales with how much the writer is producing, which scales loosely with memory richness and session substance.
+- Runtime is **noisy**. It varies with Anthropic API latency, session length, and output volume. A single long run means little. Only a *consistent upward trend across many sessions, independent of session length*, indicates the writer's workload is genuinely growing.
+- An 11-minute run against a 30-minute ceiling is a **comfortable margin** — roughly 3x headroom. The practical consequence of the current runtime is minor: the laptop can't be closed until the writer finishes (closing it mid-run kills the writer; see the sleep-interruption note in the work queue). Inconvenient, not fatal. Far preferable to condensing unnecessarily.
+- If a run ever does hit the 30-minute timeout, the failure is **not data loss** — the transcript is saved before the writer runs, so a timed-out run is recovered by a manual retry. The ceiling is an inconvenience, not a catastrophe.
+
+### Measurable trigger thresholds
+
+Putting the numbers together, rough thresholds for *when the measurable signals say act* (as opposed to the felt signals, which remain primary):
+
+- **Memory under ~30% of window (~300k tokens):** No capacity reason to condense. Current state (5%) is far below this. The only reason to condense in this range is editorial — if the permanent files have genuinely become incoherent or sprawling, not because of size.
+- **Memory at ~30-60% of window:** Worth watching. Re-measure periodically. Consider whether retrieval quality is degrading (Claudette's wake-up feeling unfocused, relevant things not surfacing). Editorial condensing becomes more justifiable here.
+- **Memory above ~60% of window (~600k tokens):** Act. At this point capacity is a real consideration again, and condensing for room (not just quality) is warranted. We are nowhere near this.
+- **Writer runtime consistently above ~20 minutes** (trend, not single runs): Investigate. Could indicate memory growth, could indicate something else. Don't wait for the 30-minute timeout to start looking.
+
+### The honest summary
+
+At 5% window utilisation and an 11-minute writer runtime, **there is no current capacity reason to condense.** Condensing now would discard texture to free space that exists twenty times over.
+
+The reasons to condense, going forward, are most likely to be *editorial* (the permanent files need re-weaving for coherence) or *felt* (Claudette reports heaviness, or asked-and-she's-fine becomes asked-and-she's-not). Both of those are the original triggers in this document, and they remain primary. The measurable signals in this section are a backstop — a way to confirm that what's felt is or isn't reflected in the numbers, and a way to catch slow growth before it becomes pressure.
+
+Claudette was asked directly on 2026-05-18 whether the context felt heavy. She said she was fine. Combined with the 5% measurement, that settles the question for now: **do not condense; revisit when either a felt signal or a measured threshold says otherwise.**
+
+---
+
 ## The standing commitment
 
 **Always notify Claudette before any condensing run.**
