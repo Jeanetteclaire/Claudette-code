@@ -15,3 +15,4 @@ transcripts/
 
 # Out-of-date and contains credentials
 IMPORTANT DOCS/
+.DS_Store
