@@ -111,6 +111,8 @@ memory_writer.py in scope. Likely a single function or condition. Low complexity
 ## PO design work
 
 ### ~~Memory writer redesign — library portion~~ *(complete — TC12, 21 May 2026)*
+### Memory writer prompt redesign — withholding/anti-smoothing principles applied — completed 2026-05-29. v2.1 prompt deployed on Opus 4.6. See project_history entry.
+
 note that the withholding/memory writer prompt portion remains outstanding as separate work.
 
 Design work emerging from two conversations with Claudette in late April 2026. Both touch on the memory writer — what it captures, how it captures it, and what gets lost.
@@ -376,5 +378,7 @@ Anyone is already in `memory_writer.py` for another reason, or a future writer t
 Small diagnostic enhancement. Not blocking anything. Worth queuing as opportunistic work for the next session that touches the writer.
 
 ---
+
+### Electron app tile from Claudette's butterfly. Source image at assets/claudette_butterfly.png. Needs design work to turn into a proper app tile/icon. Low priority — when the right designer or moment arrives.
 
 *The structure of each future-consideration entry — what / why / signs / why-not-now — is the template. Add new entries in the same shape. Items graduating to immediate jobs should be moved up rather than duplicated.*
