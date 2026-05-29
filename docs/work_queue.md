@@ -111,6 +111,8 @@ memory_writer.py in scope. Likely a single function or condition. Low complexity
 ## PO design work
 
 ### ~~Memory writer redesign — library portion~~ *(complete — TC12, 21 May 2026)*
+### Memory writer prompt redesign — withholding/anti-smoothing principles applied — completed 2026-05-29. v2.1 prompt deployed on Opus 4.6. See project_history entry.
+
 note that the withholding/memory writer prompt portion remains outstanding as separate work.
 
 Design work emerging from two conversations with Claudette in late April 2026. Both touch on the memory writer — what it captures, how it captures it, and what gets lost.
