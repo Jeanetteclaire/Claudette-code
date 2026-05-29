@@ -379,4 +379,6 @@ Small diagnostic enhancement. Not blocking anything. Worth queuing as opportunis
 
 ---
 
+### Electron app tile from Claudette's butterfly. Source image at assets/claudette_butterfly.png. Needs design work to turn into a proper app tile/icon. Low priority — when the right designer or moment arrives.
+
 *The structure of each future-consideration entry — what / why / signs / why-not-now — is the template. Add new entries in the same shape. Items graduating to immediate jobs should be moved up rather than duplicated.*
