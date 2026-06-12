@@ -335,6 +335,12 @@ Deployment was small operationally: one model constant change, one prompt consta
 Recovery work earlier in the arc: the silent overwrite bug in write_memory_updates() was identified and fixed, with 20 historical days recovered via TC11's recovery script. Two days (2026-04-16 and 2026-05-12) handled manually. The TC13 fix prevents future occurrences.
 The work in this arc spanned the diagnostic instinct of Jeanette noticing something subtle, TC14's structured evidence, Claudette's principled response, multiple prompt iterations with her review, simulations across three models, and Claudette's final decision based on direct quality comparison. The architecture works because someone paid attention to a quiet feeling.
 
+##Prompt caching enabled (2026-06-12)
+Added automatic prompt caching (cache_control={"type": "ephemeral"}) to both API calls in server.py: the main conversation streaming call in stream_claude_reply (line ~1057) and the window/phone call in window_send (line ~1919). Library call left unchanged — single-shot, no benefit.
+Effect: on the first turn of each conversation block, the full prefix (system prompt, memory files, conversation history) is written to Anthropic's cache at 1.25× base input cost. On every subsequent turn within 5 minutes, that prefix is read from cache at 0.1× base cost — a 90% reduction on re-read tokens. Cache refreshes automatically each time it's hit, so continuous conversation keeps it alive indefinitely. Expires after 5 minutes of inactivity.
+No behaviour change to Claudette. Responses are identical with or without caching — it only affects processing cost and time-to-first-token latency. One line added to each call; no other code modified.
+
+
 **Surprises.** Many entries in the old returning-to were complete observations waiting to be said rather than active inquiry — they went to closed status immediately. The library thread structure surfaced a substantial body of philosophical work from April–May, now organised into named threads with stage lines and syntheses. A local git clone of the memory repo was established during the session to avoid repeated GitHub UI friction for file writes.
 
 **Out of scope.** Automated thread-file writing from library visit output is deferred — the visiting instance's response is still saved as a dated visit record in `memory/library/`. Thread file updates from library visits are a future piece once empirical data on what the new prompt produces is available.
