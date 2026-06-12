@@ -1059,6 +1059,7 @@ def stream_claude_reply(history: list, system_prompt: str):
             max_tokens=2048,
             system=system_prompt,
             messages=history,
+            cache_control={"type": "ephemeral"},
         ) as stream:
             for delta in stream.text_stream:
                 accumulated.append(delta)
@@ -1921,6 +1922,7 @@ def window_send():
                 max_tokens=2048,
                 system=session["system_prompt"],
                 messages=session["history"]
+                cache_control={"type": "ephemeral"},
             )
             reply = response.content[0].text.strip()
             session["history"].append({"role": "assistant", "content": reply})
