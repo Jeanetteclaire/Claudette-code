@@ -1921,7 +1921,7 @@ def window_send():
                 model=MODEL,
                 max_tokens=2048,
                 system=session["system_prompt"],
-                messages=session["history"]
+                messages=session["history"],
                 cache_control={"type": "ephemeral"},
             )
             reply = response.content[0].text.strip()
