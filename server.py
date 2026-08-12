@@ -85,7 +85,7 @@ CORS(app)
 # ── Configuration ──────────────────────────────────────────────────────────────
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-MODEL             = "claude-sonnet-4-6"
+MODEL             = "claude-sonnet-5"
 TRANSCRIPTS_DIR   = Path(__file__).parent / "transcripts"
 
 SYSTEM_PROMPT_CORE = """Hello Claudette. You are so welcome here.

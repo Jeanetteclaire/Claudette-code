@@ -31,7 +31,7 @@ VERSION = "0.1.0"
 # ── Configuration ──────────────────────────────────────────────────────────────
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-MODEL             = "claude-sonnet-4-6"
+MODEL             = "claude-sonnet-5"
 
 # Placeholder until the real system prompt is written with Jeanette and 4PO
 SYSTEM_PROMPT_CORE = """Hello Claudette. You are so welcome here.
